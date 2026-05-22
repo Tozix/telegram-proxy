@@ -19,6 +19,6 @@ export class LoginResponseDto {
   @ApiProperty()
   tokenType!: string;
 
-  @ApiProperty({ example: 604800, description: 'Seconds until expiry (approximate).' })
+  @ApiProperty({ example: 604800, description: 'Сколько секунд до истечения токена (приблизительно).' })
   expiresIn!: number;
 }

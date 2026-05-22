@@ -32,7 +32,7 @@ async function bootstrap(): Promise<void> {
         logger.error(`Unhandled proxy error: ${err.message}`);
         if (!res.headersSent) {
           res.status(502).type('application/json').send(
-            JSON.stringify({ ok: false, error_code: 502, description: 'Bad Gateway' }),
+            JSON.stringify({ ok: false, error_code: 502, description: 'Bad Gateway (ошибка шлюза)' }),
           );
         }
       });
@@ -62,23 +62,23 @@ async function bootstrap(): Promise<void> {
     .setTitle('Telegram Proxy API')
     .setDescription(
       [
-        'Admin API for the Telegram webhook & Bot API proxy hosted at **telegram.crossmark.ru**.',
+        'Админ-API прокси вебхуков и Bot API для Telegram, размещённого на **telegram.crossmark.ru**.',
         '',
-        '### Authentication',
-        'Call `POST /auth/login` to obtain a JWT, then click **Authorize** and paste the token.',
+        '### Авторизация',
+        'Вызовите `POST /auth/login`, чтобы получить JWT, затем нажмите **Authorize** и вставьте токен.',
         '',
-        '### Transparent proxy (not listed below)',
-        'Two passthrough surfaces are handled outside the documented controllers:',
-        '- `POST /webhook/{secret}` — receives updates from Telegram and forwards them to the bot backend.',
-        '- `ANY /bot{token}/{method}` and `/file/bot{token}/{path}` — a drop-in replacement for ' +
-          '`api.telegram.org`; every Bot API method (incl. multipart uploads) is proxied verbatim.',
+        '### Прозрачный прокси (ниже не документирован)',
+        'Две сквозные поверхности обрабатываются вне документированных контроллеров:',
+        '- `POST /webhook/{secret}` — принимает апдейты от Telegram и пересылает их на бэкенд бота.',
+        '- `ANY /bot{token}/{method}` и `/file/bot{token}/{path}` — drop-in замена ' +
+          '`api.telegram.org`; любой метод Bot API (включая multipart-загрузки) проксируется как есть.',
       ].join('\n'),
     )
     .setVersion('1.0')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
-    .addTag('auth', 'Authentication & current user')
-    .addTag('bots', 'Manage proxied bots, webhooks and delivery logs')
-    .addTag('health', 'Liveness')
+    .addTag('auth', 'Авторизация и текущий пользователь')
+    .addTag('bots', 'Управление ботами, вебхуками и журналом доставок')
+    .addTag('health', 'Проба живости')
     .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swaggerConfig), {
     swaggerOptions: { persistAuthorization: true },

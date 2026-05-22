@@ -1,11 +1,14 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { BotActions } from '@/components/BotActions';
+import { Pagination } from '@/components/Pagination';
 import { api, ApiError } from '@/lib/api';
 import { formatDate, formatUnix } from '@/lib/format';
-import type { Bot, DeliveryLog, WebhookInfo } from '@/lib/types';
+import type { Bot, DeliveryLog, Paginated, WebhookInfo } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+
+const LOGS_PAGE_SIZE = 20;
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -25,10 +28,19 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-export default async function BotDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function BotDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ logsPage?: string }>;
+}) {
   const { id } = await params;
+  const logsPage = Math.max(1, Number((await searchParams).logsPage) || 1);
   const bot = await api.get<Bot>(`/api/bots/${id}`);
-  const logs = await api.get<DeliveryLog[]>(`/api/bots/${id}/logs?limit=20`);
+  const logs = await api.get<Paginated<DeliveryLog>>(
+    `/api/bots/${id}/logs?page=${logsPage}&limit=${LOGS_PAGE_SIZE}`,
+  );
 
   let webhookInfo: WebhookInfo | null = null;
   let webhookInfoError: string | null = null;
@@ -95,44 +107,55 @@ export default async function BotDetailPage({ params }: { params: Promise<{ id: 
         ) : null}
       </Card>
 
-      <Card title="Доставки вебхуков (последние 20)">
-        {logs.length === 0 ? (
+      <Card title={`Доставки вебхуков${logs.total > 0 ? ` (всего ${logs.total})` : ''}`}>
+        {logs.total === 0 ? (
           <p className="px-4 py-3 text-sm text-slate-500">Пока нет доставок.</p>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-2 font-medium">Время</th>
-                <th className="px-4 py-2 font-medium">update_id</th>
-                <th className="px-4 py-2 font-medium">Статус</th>
-                <th className="px-4 py-2 font-medium">HTTP</th>
-                <th className="px-4 py-2 font-medium">мс</th>
-                <th className="px-4 py-2 font-medium">Ошибка</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {logs.map((log) => (
-                <tr key={log.id}>
-                  <td className="px-4 py-2 text-slate-600">{formatDate(log.createdAt)}</td>
-                  <td className="px-4 py-2 text-slate-600">{log.updateId ?? '—'}</td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                        log.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                      }`}
-                    >
-                      {log.success ? 'OK' : 'FAIL'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 text-slate-600">{log.responseStatus ?? '—'}</td>
-                  <td className="px-4 py-2 text-slate-600">{log.durationMs}</td>
-                  <td className="px-4 py-2 max-w-xs truncate text-slate-500" title={log.errorMessage ?? ''}>
-                    {log.errorMessage ?? '—'}
-                  </td>
+          <>
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Время</th>
+                  <th className="px-4 py-2 font-medium">update_id</th>
+                  <th className="px-4 py-2 font-medium">Статус</th>
+                  <th className="px-4 py-2 font-medium">HTTP</th>
+                  <th className="px-4 py-2 font-medium">Попытка</th>
+                  <th className="px-4 py-2 font-medium">мс</th>
+                  <th className="px-4 py-2 font-medium">Ошибка</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {logs.items.map((log) => (
+                  <tr key={log.id}>
+                    <td className="px-4 py-2 text-slate-600">{formatDate(log.createdAt)}</td>
+                    <td className="px-4 py-2 text-slate-600">{log.updateId ?? '—'}</td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                          log.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}
+                      >
+                        {log.success ? 'OK' : 'FAIL'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-slate-600">{log.responseStatus ?? '—'}</td>
+                    <td className="px-4 py-2 text-slate-600">{log.attempt}</td>
+                    <td className="px-4 py-2 text-slate-600">{log.durationMs}</td>
+                    <td className="px-4 py-2 max-w-xs truncate text-slate-500" title={log.errorMessage ?? ''}>
+                      {log.errorMessage ?? '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="px-4 pb-4">
+              <Pagination
+                page={logs.page}
+                totalPages={logs.totalPages}
+                hrefFor={(p) => `/bots/${id}?logsPage=${p}`}
+              />
+            </div>
+          </>
         )}
       </Card>
     </div>

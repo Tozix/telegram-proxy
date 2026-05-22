@@ -17,26 +17,26 @@ export class BotResponseDto {
   name!: string;
 
   @Expose()
-  @ApiPropertyOptional({ nullable: true, example: 'crossmark_support_bot', description: '@-username from getMe' })
+  @ApiPropertyOptional({ nullable: true, example: 'crossmark_support_bot', description: '@-username из getMe' })
   username!: string | null;
 
   @Expose()
-  @ApiPropertyOptional({ nullable: true, example: 7123456789, description: 'Numeric Telegram id from getMe' })
+  @ApiPropertyOptional({ nullable: true, example: 7123456789, description: 'Числовой Telegram id из getMe' })
   telegramBotId!: number | null;
 
   @Expose()
-  @ApiProperty({ example: '7123456789:******cdef', description: 'Masked token preview (full token is never returned)' })
+  @ApiProperty({ example: '7123456789:******cdef', description: 'Маскированный токен (полный токен никогда не возвращается)' })
   tokenPreview!: string;
 
   @Expose()
   @ApiProperty({
     example: 'https://telegram.crossmark.ru/webhook/2f1c…',
-    description: 'URL registered in Telegram for this bot',
+    description: 'URL вебхука, зарегистрированный в Telegram для этого бота',
   })
   webhookUrl!: string;
 
   @Expose()
-  @ApiProperty({ example: 'https://my-backend.ru/telegram/webhook', description: 'Real backend updates are forwarded to' })
+  @ApiProperty({ example: 'https://my-backend.ru/telegram/webhook', description: 'Бэкенд, на который пересылаются апдейты' })
   targetWebhookUrl!: string;
 
   @Expose()
@@ -53,12 +53,12 @@ export class BotResponseDto {
     type: String,
     format: 'date-time',
     example: '2026-05-22T07:50:30.130Z',
-    description: 'When the webhook was last successfully set in Telegram',
+    description: 'Когда вебхук в последний раз успешно установлен в Telegram',
   })
   lastWebhookSetAt!: Date | null;
 
   @Expose()
-  @ApiPropertyOptional({ nullable: true, example: null, description: 'Last setWebhook error, if any' })
+  @ApiPropertyOptional({ nullable: true, example: null, description: 'Текст последней ошибки setWebhook, если была' })
   webhookError!: string | null;
 
   @Expose()

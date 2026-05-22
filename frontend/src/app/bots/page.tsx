@@ -1,9 +1,12 @@
 import Link from 'next/link';
+import { Pagination } from '@/components/Pagination';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
-import type { Bot } from '@/lib/types';
+import type { Bot, Paginated } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+
+const PAGE_SIZE = 20;
 
 function StatusBadge({ bot }: { bot: Bot }) {
   const base = 'inline-flex rounded-full px-2 py-0.5 text-xs font-medium';
@@ -12,13 +15,22 @@ function StatusBadge({ bot }: { bot: Bot }) {
   return <span className={`${base} bg-green-100 text-green-700`}>Активен</span>;
 }
 
-export default async function BotsPage() {
-  const bots = await api.get<Bot[]>('/api/bots');
+export default async function BotsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const sp = await searchParams;
+  const page = Math.max(1, Number(sp.page) || 1);
+  const data = await api.get<Paginated<Bot>>(`/api/bots?page=${page}&limit=${PAGE_SIZE}`);
+  const bots = data.items;
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-slate-900">Боты</h1>
+        <h1 className="text-xl font-semibold text-slate-900">
+          Боты {data.total > 0 && <span className="text-sm font-normal text-slate-400">({data.total})</span>}
+        </h1>
         <Link
           href="/bots/new"
           className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
@@ -27,7 +39,7 @@ export default async function BotsPage() {
         </Link>
       </div>
 
-      {bots.length === 0 ? (
+      {data.total === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">
           Пока нет ни одного бота. Нажмите «Добавить бота», чтобы зарегистрировать первого.
         </div>
@@ -65,6 +77,13 @@ export default async function BotsPage() {
           </table>
         </div>
       )}
+
+      <Pagination
+        page={data.page}
+        totalPages={data.totalPages}
+        total={data.total}
+        hrefFor={(p) => `/bots?page=${p}`}
+      />
     </div>
   );
 }

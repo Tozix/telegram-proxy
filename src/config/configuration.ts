@@ -42,6 +42,10 @@ export interface AppConfig {
     timeoutMs: number;
     /** Timeout for forwarding an incoming webhook to the real backend (ms). */
     webhookForwardTimeoutMs: number;
+    /** How many times to RE-send a webhook to the backend if it doesn't return 2xx. */
+    webhookRetryAttempts: number;
+    /** Base delay between webhook retries (ms); grows exponentially per retry. */
+    webhookRetryDelayMs: number;
     /** Max request body size accepted by the proxy, in megabytes. */
     maxUploadMb: number;
   };
@@ -90,6 +94,8 @@ export default (): AppConfig => ({
     allowUnregistered: toBool(process.env.PROXY_ALLOW_UNREGISTERED, false),
     timeoutMs: toInt(process.env.PROXY_TIMEOUT_MS, 30000),
     webhookForwardTimeoutMs: toInt(process.env.WEBHOOK_FORWARD_TIMEOUT_MS, 25000),
+    webhookRetryAttempts: toInt(process.env.WEBHOOK_RETRY_ATTEMPTS, 3),
+    webhookRetryDelayMs: toInt(process.env.WEBHOOK_RETRY_DELAY_MS, 500),
     maxUploadMb: toInt(process.env.MAX_UPLOAD_MB, 50),
   },
 });

@@ -23,5 +23,6 @@ COPY src ./src
 USER bun
 EXPOSE 3000
 # Apply the schema (idempotent) before starting — keeps tables in sync, like the
-# old DB_SYNCHRONIZE. Client is already generated at build, so skip regeneration.
-CMD ["sh", "-c", "bunx prisma db push --skip-generate && bun run src/main.ts"]
+# old DB_SYNCHRONIZE. The client is already generated at build time (Prisma 7
+# `db push` no longer generates it).
+CMD ["sh", "-c", "bunx prisma db push && bun run src/main.ts"]

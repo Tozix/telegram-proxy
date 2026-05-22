@@ -35,6 +35,7 @@ export interface DeliveryLog {
   success: boolean;
   errorMessage: string | null;
   durationMs: number;
+  attempt: number;
   createdAt: string;
 }
 
@@ -48,4 +49,12 @@ export interface LoginResponse {
   accessToken: string;
   tokenType: string;
   expiresIn: number;
+}
+
+export interface Paginated<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }

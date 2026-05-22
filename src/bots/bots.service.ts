@@ -8,11 +8,13 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '../../generated/prisma/client';
 import type { Bot } from '../../generated/prisma/client';
 import { randomBytes } from 'node:crypto';
+import { buildMeta } from '../common/dto/paginated.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { BotResponseDto } from './dto/bot-response.dto';
 import { CreateBotDto } from './dto/create-bot.dto';
+import { PaginatedBotsDto } from './dto/paginated-bots.dto';
 import { UpdateBotDto } from './dto/update-bot.dto';
 import { WebhookInfoDto } from './dto/webhook-info.dto';
 
@@ -37,7 +39,7 @@ export class BotsService {
   async create(dto: CreateBotDto): Promise<BotResponseDto> {
     const existing = await this.prisma.bot.findUnique({ where: { token: dto.token } });
     if (existing) {
-      throw new ConflictException('A bot with this token is already registered');
+      throw new ConflictException('Бот с таким токеном уже зарегистрирован');
     }
 
     // Validate the token and capture the bot identity.
@@ -61,9 +63,16 @@ export class BotsService {
     return this.toDto(bot);
   }
 
-  async findAll(): Promise<BotResponseDto[]> {
-    const bots = await this.prisma.bot.findMany({ orderBy: { createdAt: 'desc' } });
-    return bots.map((b) => this.toDto(b));
+  async findAll(page: number, limit: number): Promise<PaginatedBotsDto> {
+    const [bots, total] = await this.prisma.$transaction([
+      this.prisma.bot.findMany({
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.bot.count(),
+    ]);
+    return { items: bots.map((b) => this.toDto(b)), ...buildMeta(total, page, limit) };
   }
 
   async findOne(id: string): Promise<BotResponseDto> {
@@ -83,7 +92,7 @@ export class BotsService {
     if (dto.token !== undefined && dto.token !== bot.token) {
       const clash = await this.prisma.bot.findUnique({ where: { token: dto.token } });
       if (clash && clash.id !== bot.id) {
-        throw new ConflictException('A bot with this token is already registered');
+        throw new ConflictException('Бот с таким токеном уже зарегистрирован');
       }
       const me = await this.telegram.getMe(dto.token);
       data.token = dto.token;
@@ -129,7 +138,7 @@ export class BotsService {
 
   async getEntity(id: string): Promise<Bot> {
     const bot = await this.prisma.bot.findUnique({ where: { id } });
-    if (!bot) throw new NotFoundException('Bot not found');
+    if (!bot) throw new NotFoundException('Бот не найден');
     return bot;
   }
 

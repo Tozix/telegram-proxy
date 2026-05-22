@@ -13,7 +13,7 @@ export class DeliveryLogResponseDto {
   botId!: string | null;
 
   @Expose()
-  @ApiPropertyOptional({ nullable: true, example: '777', description: 'Telegram update_id' })
+  @ApiPropertyOptional({ nullable: true, example: '777', description: 'Идентификатор апдейта Telegram (update_id)' })
   updateId!: string | null;
 
   @Expose()
@@ -21,11 +21,11 @@ export class DeliveryLogResponseDto {
   targetUrl!: string;
 
   @Expose()
-  @ApiProperty({ example: 142, description: 'Forwarded payload size in bytes' })
+  @ApiProperty({ example: 142, description: 'Размер пересланного тела в байтах' })
   requestBytes!: number;
 
   @Expose()
-  @ApiPropertyOptional({ nullable: true, example: 200, description: 'HTTP status returned by the backend' })
+  @ApiPropertyOptional({ nullable: true, example: 200, description: 'HTTP-статус, вернувшийся от бэкенда' })
   responseStatus!: number | null;
 
   @Expose()
@@ -39,6 +39,10 @@ export class DeliveryLogResponseDto {
   @Expose()
   @ApiProperty({ example: 15 })
   durationMs!: number;
+
+  @Expose()
+  @ApiProperty({ example: 1, description: 'Номер попытки доставки (1 = первая отправка)' })
+  attempt!: number;
 
   @Expose()
   @ApiProperty({ type: String, format: 'date-time', example: '2026-05-22T07:50:30.130Z' })

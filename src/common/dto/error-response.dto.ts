@@ -7,8 +7,8 @@ export class ErrorResponseDto {
 
   @ApiProperty({
     oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }],
-    example: ['token must be a valid Telegram bot token'],
-    description: 'Human-readable message, or an array of validation errors',
+    example: ['token должен быть корректным токеном Telegram-бота'],
+    description: 'Текст ошибки или массив ошибок валидации',
   })
   message!: string | string[];
 

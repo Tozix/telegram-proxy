@@ -16,7 +16,7 @@ export class WebhookInfoDto {
   has_custom_certificate!: boolean;
 
   @Expose()
-  @ApiProperty({ example: 0, description: 'Number of updates awaiting delivery' })
+  @ApiProperty({ example: 0, description: 'Количество апдейтов, ожидающих доставки' })
   pending_update_count!: number;
 
   @Expose()
@@ -24,7 +24,7 @@ export class WebhookInfoDto {
   ip_address?: string;
 
   @Expose()
-  @ApiPropertyOptional({ example: 1716367830, description: 'Unix time of the most recent delivery error' })
+  @ApiPropertyOptional({ example: 1716367830, description: 'Unix-время последней ошибки доставки' })
   last_error_date?: number;
 
   @Expose()

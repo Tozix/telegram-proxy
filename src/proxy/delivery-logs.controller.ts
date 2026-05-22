@@ -1,30 +1,21 @@
-import {
-  Controller,
-  DefaultValuePipe,
-  Get,
-  Param,
-  ParseIntPipe,
-  ParseUUIDPipe,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
-import { DeliveryLogResponseDto } from './dto/delivery-log-response.dto';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { PaginatedDeliveryLogsDto } from './dto/paginated-delivery-logs.dto';
 import { DeliveryLogsService } from './delivery-logs.service';
 
 @ApiTags('bots')
 @ApiBearerAuth()
-@ApiUnauthorizedResponse({ type: ErrorResponseDto, description: 'Missing or invalid bearer token' })
+@ApiUnauthorizedResponse({ type: ErrorResponseDto, description: 'Отсутствует или неверный bearer-токен' })
 @UseGuards(JwtAuthGuard)
 @Controller('api/bots')
 export class DeliveryLogsController {
@@ -32,16 +23,15 @@ export class DeliveryLogsController {
 
   @Get(':id/logs')
   @ApiOperation({
-    summary: 'Webhook delivery logs',
-    description: 'Recent forwarding attempts (Telegram → proxy → backend) for this bot, newest first.',
+    summary: 'Журнал доставок вебхуков',
+    description: 'Постраничный список попыток доставки (Telegram → прокси → бэкенд) для бота, новые сверху.',
   })
   @ApiParam({ name: 'id', format: 'uuid' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Max rows (1–500, default 100)' })
-  @ApiOkResponse({ type: [DeliveryLogResponseDto] })
+  @ApiOkResponse({ type: PaginatedDeliveryLogsDto })
   list(
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
-  ): Promise<DeliveryLogResponseDto[]> {
-    return this.logs.findByBot(id, limit);
+    @Query() query: PaginationQueryDto,
+  ): Promise<PaginatedDeliveryLogsDto> {
+    return this.logs.findByBot(id, query.page, query.limit);
   }
 }

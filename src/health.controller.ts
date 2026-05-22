@@ -5,7 +5,7 @@ export class HealthResponseDto {
   @ApiProperty({ example: 'ok' })
   status!: string;
 
-  @ApiProperty({ example: 9.69, description: 'Process uptime in seconds' })
+  @ApiProperty({ example: 9.69, description: 'Аптайм процесса в секундах' })
   uptime!: number;
 
   @ApiProperty({ type: String, format: 'date-time', example: '2026-05-22T07:50:30.130Z' })
@@ -16,7 +16,7 @@ export class HealthResponseDto {
 @Controller()
 export class HealthController {
   @Get('health')
-  @ApiOperation({ summary: 'Liveness probe', description: 'Public endpoint for health checks / load balancers.' })
+  @ApiOperation({ summary: 'Проба живости', description: 'Публичный эндпоинт для health-check / балансировщиков.' })
   @ApiOkResponse({ type: HealthResponseDto })
   health(): HealthResponseDto {
     return {

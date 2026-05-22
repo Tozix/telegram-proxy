@@ -26,7 +26,7 @@ class EnvironmentVariables {
 
   @IsNotEmpty()
   @IsString()
-  @MinLength(16, { message: 'JWT_SECRET must be at least 16 characters long' })
+  @MinLength(16, { message: 'JWT_SECRET должен быть не короче 16 символов' })
   JWT_SECRET!: string;
 
   @IsNotEmpty()
@@ -35,7 +35,7 @@ class EnvironmentVariables {
 
   @IsNotEmpty()
   @IsString()
-  @MinLength(8, { message: 'ADMIN_PASSWORD must be at least 8 characters long' })
+  @MinLength(8, { message: 'ADMIN_PASSWORD должен быть не короче 8 символов' })
   ADMIN_PASSWORD!: string;
 }
 

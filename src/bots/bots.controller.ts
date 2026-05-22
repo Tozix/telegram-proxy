@@ -30,15 +30,17 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { BotsService } from './bots.service';
 import { BotResponseDto } from './dto/bot-response.dto';
 import { CreateBotDto } from './dto/create-bot.dto';
+import { PaginatedBotsDto } from './dto/paginated-bots.dto';
 import { UpdateBotDto } from './dto/update-bot.dto';
 import { WebhookInfoDto } from './dto/webhook-info.dto';
 
 @ApiTags('bots')
 @ApiBearerAuth()
-@ApiUnauthorizedResponse({ type: ErrorResponseDto, description: 'Missing or invalid bearer token' })
+@ApiUnauthorizedResponse({ type: ErrorResponseDto, description: 'Отсутствует или неверный bearer-токен' })
 @UseGuards(JwtAuthGuard)
 @Controller('api/bots')
 export class BotsController {
@@ -46,58 +48,59 @@ export class BotsController {
 
   @Post()
   @ApiOperation({
-    summary: 'Register a bot',
+    summary: 'Зарегистрировать бота',
     description:
-      'Validates the token via `getMe`, generates a webhook secret, then calls Telegram `setWebhook` ' +
-      'pointing at `{PUBLIC_BASE_URL}/webhook/<secret>`. The bot is created even if setWebhook fails; ' +
-      'inspect `webhookError` in the response.',
+      'Проверяет токен через `getMe`, генерирует секрет вебхука и вызывает Telegram `setWebhook`, ' +
+      'указывая `{PUBLIC_BASE_URL}/webhook/<secret>`. Бот создаётся даже если setWebhook не удался — ' +
+      'смотрите поле `webhookError` в ответе.',
   })
-  @ApiCreatedResponse({ type: BotResponseDto, description: 'Bot registered' })
-  @ApiBadRequestResponse({ type: ErrorResponseDto, description: 'Validation failed' })
-  @ApiConflictResponse({ type: ErrorResponseDto, description: 'A bot with this token already exists' })
-  @ApiBadGatewayResponse({ type: ErrorResponseDto, description: 'Telegram rejected the token (getMe failed)' })
+  @ApiCreatedResponse({ type: BotResponseDto, description: 'Бот зарегистрирован' })
+  @ApiBadRequestResponse({ type: ErrorResponseDto, description: 'Ошибка валидации' })
+  @ApiConflictResponse({ type: ErrorResponseDto, description: 'Бот с таким токеном уже существует' })
+  @ApiBadGatewayResponse({ type: ErrorResponseDto, description: 'Telegram отклонил токен (getMe не удался)' })
   create(@Body() dto: CreateBotDto): Promise<BotResponseDto> {
     return this.bots.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List bots', description: 'Returns all registered bots, newest first.' })
-  @ApiOkResponse({ type: [BotResponseDto] })
-  findAll(): Promise<BotResponseDto[]> {
-    return this.bots.findAll();
+  @ApiOperation({ summary: 'Список ботов', description: 'Постраничный список ботов, новые сверху.' })
+  @ApiOkResponse({ type: PaginatedBotsDto })
+  findAll(@Query() query: PaginationQueryDto): Promise<PaginatedBotsDto> {
+    return this.bots.findAll(query.page, query.limit);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a bot' })
+  @ApiOperation({ summary: 'Получить бота' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOkResponse({ type: BotResponseDto })
-  @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Bot not found' })
+  @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Бот не найден' })
   findOne(@Param('id', ParseUUIDPipe) id: string): Promise<BotResponseDto> {
     return this.bots.findOne(id);
   }
 
   @Patch(':id')
   @ApiOperation({
-    summary: 'Update a bot',
-    description: 'Changing the token, target URL or allowed updates re-registers the webhook in Telegram. ' +
-      'Setting `isActive: false` removes the webhook; setting it back to `true` restores it.',
+    summary: 'Изменить бота',
+    description:
+      'Смена токена, целевого URL или allowed_updates переустанавливает вебхук в Telegram. ' +
+      '`isActive: false` удаляет вебхук; возврат в `true` восстанавливает его.',
   })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOkResponse({ type: BotResponseDto })
-  @ApiBadRequestResponse({ type: ErrorResponseDto, description: 'Validation failed' })
-  @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Bot not found' })
-  @ApiConflictResponse({ type: ErrorResponseDto, description: 'Token already used by another bot' })
+  @ApiBadRequestResponse({ type: ErrorResponseDto, description: 'Ошибка валидации' })
+  @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Бот не найден' })
+  @ApiConflictResponse({ type: ErrorResponseDto, description: 'Токен уже используется другим ботом' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateBotDto): Promise<BotResponseDto> {
     return this.bots.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete a bot', description: 'Removes the bot and best-effort calls Telegram `deleteWebhook`.' })
+  @ApiOperation({ summary: 'Удалить бота', description: 'Удаляет бота и по возможности вызывает Telegram `deleteWebhook`.' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiQuery({ name: 'dropPendingUpdates', required: false, type: Boolean })
-  @ApiNoContentResponse({ description: 'Bot deleted' })
-  @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Bot not found' })
+  @ApiNoContentResponse({ description: 'Бот удалён' })
+  @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Бот не найден' })
   async remove(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('dropPendingUpdates', new ParseBoolPipe({ optional: true })) dropPendingUpdates?: boolean,
@@ -106,11 +109,11 @@ export class BotsController {
   }
 
   @Post(':id/refresh-webhook')
-  @ApiOperation({ summary: 'Re-register webhook', description: 'Calls Telegram `setWebhook` again for this bot.' })
+  @ApiOperation({ summary: 'Переустановить вебхук', description: 'Повторно вызывает Telegram `setWebhook` для бота.' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiQuery({ name: 'dropPendingUpdates', required: false, type: Boolean })
   @ApiOkResponse({ type: BotResponseDto })
-  @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Bot not found' })
+  @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Бот не найден' })
   refreshWebhook(
     @Param('id', ParseUUIDPipe) id: string,
     @Query('dropPendingUpdates', new ParseBoolPipe({ optional: true })) dropPendingUpdates?: boolean,
@@ -119,11 +122,11 @@ export class BotsController {
   }
 
   @Get(':id/webhook-info')
-  @ApiOperation({ summary: 'Live webhook info', description: 'Fetches `getWebhookInfo` directly from Telegram.' })
+  @ApiOperation({ summary: 'Информация о вебхуке (живая)', description: 'Запрашивает `getWebhookInfo` напрямую у Telegram.' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOkResponse({ type: WebhookInfoDto })
-  @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Bot not found' })
-  @ApiBadGatewayResponse({ type: ErrorResponseDto, description: 'Telegram API unreachable' })
+  @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Бот не найден' })
+  @ApiBadGatewayResponse({ type: ErrorResponseDto, description: 'Telegram API недоступен' })
   webhookInfo(@Param('id', ParseUUIDPipe) id: string): Promise<WebhookInfoDto> {
     return this.bots.getWebhookInfo(id);
   }

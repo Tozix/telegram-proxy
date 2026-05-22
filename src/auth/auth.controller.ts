@@ -23,15 +23,15 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Log in',
-    description: 'Exchanges admin email + password for a JWT bearer token used on all `/api/*` endpoints.',
+    summary: 'Вход',
+    description: 'Обменивает email и пароль администратора на JWT bearer-токен для всех эндпоинтов `/api/*`.',
   })
   @ApiBody({
     type: LoginDto,
     examples: { default: { value: { email: 'admin@example.com', password: 'admin12345' } } },
   })
-  @ApiOkResponse({ type: LoginResponseDto, description: 'Authentication succeeded' })
-  @ApiUnauthorizedResponse({ type: ErrorResponseDto, description: 'Invalid credentials' })
+  @ApiOkResponse({ type: LoginResponseDto, description: 'Авторизация успешна' })
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto, description: 'Неверные учётные данные' })
   login(@Body() dto: LoginDto): Promise<LoginResponseDto> {
     return this.auth.login(dto.email, dto.password);
   }
@@ -39,9 +39,9 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Current user', description: 'Returns the user resolved from the bearer token.' })
+  @ApiOperation({ summary: 'Текущий пользователь', description: 'Возвращает пользователя, определённого по bearer-токену.' })
   @ApiOkResponse({ type: AuthUserDto })
-  @ApiUnauthorizedResponse({ type: ErrorResponseDto, description: 'Missing or invalid token' })
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto, description: 'Токен отсутствует или неверный' })
   me(@Req() req: Request): AuthUserDto {
     return AuthUserDto.from(req.user as AuthUser);
   }

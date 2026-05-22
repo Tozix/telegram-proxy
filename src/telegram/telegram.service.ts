@@ -60,13 +60,13 @@ export class TelegramService {
       });
     } catch (err) {
       this.logger.error(`Telegram ${method} request failed: ${(err as Error).message}`);
-      throw new BadGatewayException(`Failed to reach Telegram API: ${(err as Error).message}`);
+      throw new BadGatewayException(`Не удалось обратиться к Telegram API: ${(err as Error).message}`);
     }
 
     const data = (await res.json().catch(() => ({}))) as TelegramResponse<T>;
     if (!data.ok) {
       throw new BadGatewayException(
-        `Telegram ${method} failed (${data.error_code ?? res.status}): ${data.description ?? 'unknown error'}`,
+        `Запрос Telegram ${method} не удался (${data.error_code ?? res.status}): ${data.description ?? 'неизвестная ошибка'}`,
       );
     }
     return data.result as T;

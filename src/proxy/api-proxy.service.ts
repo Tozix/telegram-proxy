@@ -44,12 +44,12 @@ export class ApiProxyService {
     const token = this.extractToken(path);
 
     if (!token) {
-      this.sendError(res, 404, 'Not Found: expected /bot<token>/<method>');
+      this.sendError(res, 404, 'Не найдено: ожидается /bot<token>/<method>');
       return;
     }
 
     if (!this.allowUnregistered && !(await this.bots.isRegisteredToken(token))) {
-      this.sendError(res, 403, 'Bot token is not registered with this proxy');
+      this.sendError(res, 403, 'Токен бота не зарегистрирован в этом прокси');
       return;
     }
 
@@ -75,7 +75,7 @@ export class ApiProxyService {
       });
     } catch (err) {
       this.logger.warn(`Proxy to ${upstream} failed: ${(err as Error).message}`);
-      this.sendError(res, 502, `Bad Gateway: ${(err as Error).message}`);
+      this.sendError(res, 502, `Ошибка шлюза: ${(err as Error).message}`);
       return;
     }
 
@@ -115,7 +115,7 @@ export class ApiProxyService {
         size += chunk.length;
         if (size > this.maxUploadBytes) {
           req.destroy();
-          reject(new Error(`Payload too large (> ${this.maxUploadBytes} bytes)`));
+          reject(new Error(`Тело запроса слишком большое (> ${this.maxUploadBytes} байт)`));
           return;
         }
         chunks.push(chunk);

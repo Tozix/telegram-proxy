@@ -29,7 +29,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload): Promise<AuthUser> {
     const user = await this.users.findById(payload.sub);
     if (!user) {
-      throw new UnauthorizedException('User no longer exists');
+      throw new UnauthorizedException('Пользователь больше не существует');
     }
     return { userId: user.id, email: user.email, role: user.role };
   }

@@ -5,7 +5,7 @@ import { CreateBotDto } from './create-bot.dto';
 export class UpdateBotDto extends PartialType(
   PickType(CreateBotDto, ['name', 'token', 'targetWebhookUrl', 'allowedUpdates'] as const),
 ) {
-  @ApiPropertyOptional({ description: 'Enable/disable forwarding for this bot.' })
+  @ApiPropertyOptional({ description: 'Включить/выключить пересылку для этого бота.' })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;

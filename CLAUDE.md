@@ -69,7 +69,7 @@ The two transparent surfaces are NOT NestJS controllers — they are raw Express
 
 ⚠️ The path regex in `main.ts` and `ApiProxyService.extractToken` must stay in agreement — change both together.
 
-The inbound webhook (`POST /webhook/:secret`) **is** a normal controller ([WebhookController](src/proxy/webhook.controller.ts) → [WebhookService](src/proxy/webhook.service.ts)), excluded from Swagger and not behind auth. It validates the URL secret and the `X-Telegram-Bot-Api-Secret-Token` header, forwards to the backend, and **coerces backend 5xx responses to 200** so Telegram doesn't enter a retry storm (4xx is preserved). Every delivery is recorded in `delivery_log`.
+The inbound webhook (`POST /webhook/:secret`) **is** a normal controller ([WebhookController](src/proxy/webhook.controller.ts) → [WebhookService](src/proxy/webhook.service.ts)), excluded from Swagger and not behind auth. It validates the URL secret and the `X-Telegram-Bot-Api-Secret-Token` header, forwards to the backend, and **coerces backend 5xx responses to 200** so Telegram doesn't enter a retry storm (4xx is preserved). If the backend doesn't return 2xx, delivery is **retried up to `WEBHOOK_RETRY_ATTEMPTS` times** (default 3) with exponential backoff (`WEBHOOK_RETRY_DELAY_MS`); the first 2xx is passed through. Every attempt is recorded in the `delivery_logs` table with its `attempt` number.
 
 ### Bot lifecycle
 
