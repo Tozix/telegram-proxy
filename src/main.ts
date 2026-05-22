@@ -77,6 +77,7 @@ async function bootstrap(): Promise<void> {
     .setVersion('1.0')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'bearer')
     .addTag('auth', 'Авторизация и текущий пользователь')
+    .addTag('users', 'Управление администраторами')
     .addTag('bots', 'Управление ботами, вебхуками и журналом доставок')
     .addTag('health', 'Проба живости')
     .build();

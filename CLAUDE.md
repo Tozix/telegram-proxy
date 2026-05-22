@@ -96,7 +96,7 @@ Next.js 15 App Router + Tailwind v4 (IBM Plex Sans/Mono via `next/font`), `outpu
 
 ## Admin users
 
-The first admin is auto-seeded on boot from `ADMIN_EMAIL`/`ADMIN_PASSWORD` when the `users` table is empty ([UsersService.ensureAdmin](src/users/users.service.ts)). To add more admins or reset a password, run the idempotent CLI: `bun run create-admin <email> <password>` ([scripts/create-admin.ts](scripts/create-admin.ts), upserts by email; needs `DATABASE_URL`).
+The first admin is auto-seeded on boot from `ADMIN_EMAIL`/`ADMIN_PASSWORD` when the `users` table is empty ([UsersService.ensureAdmin](src/users/users.service.ts)). After that, manage admins three ways: the **web UI** at `/users` (list / add / change password / delete), the **REST API** `/api/users` ([UsersController](src/users/users.controller.ts), JWT), or the idempotent **CLI** `bun run create-admin <email> <password>` ([scripts/create-admin.ts](scripts/create-admin.ts), upserts by email; needs `DATABASE_URL`). Guards in [UsersService](src/users/users.service.ts): you cannot delete yourself or the last remaining admin. `UserResponseDto` never exposes `passwordHash`.
 
 ## Production note
 

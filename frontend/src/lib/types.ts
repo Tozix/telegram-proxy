@@ -45,6 +45,14 @@ export interface AuthUser {
   role: string;
 }
 
+export interface AdminUser {
+  id: string;
+  email: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface LoginResponse {
   accessToken: string;
   tokenType: string;

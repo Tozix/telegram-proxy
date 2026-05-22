@@ -15,6 +15,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <Link href="/bots" className="text-slate-600 hover:text-slate-900">
               Боты
             </Link>
+            <Link href="/users" className="text-slate-600 hover:text-slate-900">
+              Администраторы
+            </Link>
             <Link href="/guide" className="text-slate-600 hover:text-slate-900">
               Документация
             </Link>

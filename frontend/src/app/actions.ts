@@ -95,3 +95,40 @@ export async function deleteBot(formData: FormData): Promise<void> {
   revalidatePath('/bots');
   redirect('/bots');
 }
+
+// ----- администраторы -----
+
+export async function createAdmin(_prev: FormState, formData: FormData): Promise<FormState> {
+  const email = String(formData.get('email') ?? '').trim();
+  const password = String(formData.get('password') ?? '');
+  if (!email || !password) return { error: 'Введите email и пароль' };
+
+  try {
+    await api.post('/api/users', { email, password });
+  } catch (e) {
+    return { error: message(e, 'Не удалось создать администратора') };
+  }
+  revalidatePath('/users');
+  redirect('/users');
+}
+
+export async function changeAdminPassword(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  const password = String(formData.get('password') ?? '');
+  if (!password) return { error: 'Введите новый пароль' };
+
+  try {
+    await api.patch(`/api/users/${id}`, { password });
+  } catch (e) {
+    return { error: message(e, 'Не удалось изменить пароль') };
+  }
+  revalidatePath('/users');
+  redirect('/users');
+}
+
+export async function deleteAdmin(formData: FormData): Promise<void> {
+  const id = String(formData.get('id') ?? '');
+  await api.del(`/api/users/${id}`);
+  revalidatePath('/users');
+  redirect('/users');
+}
