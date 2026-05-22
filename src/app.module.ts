@@ -5,9 +5,11 @@ import { BotsModule } from './bots/bots.module';
 import configuration from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { HealthController } from './health.controller';
+import { MailModule } from './mail/mail.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProxyModule } from './proxy/proxy.module';
 import { RedisModule } from './redis/redis.module';
+import { StatsModule } from './stats/stats.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { UsersModule } from './users/users.module';
 
@@ -21,11 +23,13 @@ import { UsersModule } from './users/users.module';
     }),
     PrismaModule,
     RedisModule,
+    MailModule,
     UsersModule,
     AuthModule,
     TelegramModule,
     BotsModule,
     ProxyModule,
+    StatsModule,
   ],
   controllers: [HealthController],
 })

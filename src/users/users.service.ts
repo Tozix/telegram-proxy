@@ -7,12 +7,15 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
+import { randomBytes } from 'node:crypto';
 import { Prisma, UserRole } from '../../generated/prisma/client';
 import type { User } from '../../generated/prisma/client';
 import { buildMeta } from '../common/dto/paginated.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginatedUsersDto } from './dto/paginated-users.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+
+const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 @Injectable()
 export class UsersService {
@@ -31,9 +34,12 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
+  /** Creates an already-verified user (admin paths: seed, admin CRUD, CLI). */
   async create(email: string, password: string, role: UserRole = UserRole.admin): Promise<User> {
     const passwordHash = await bcrypt.hash(password, 10);
-    return this.prisma.user.create({ data: { email: email.toLowerCase(), passwordHash, role } });
+    return this.prisma.user.create({
+      data: { email: email.toLowerCase(), passwordHash, role, emailVerifiedAt: new Date() },
+    });
   }
 
   /** Seeds the first admin from ADMIN_EMAIL / ADMIN_PASSWORD if no users exist. */
@@ -45,6 +51,52 @@ export class UsersService {
     const password = this.config.get<string>('admin.password')!;
     await this.create(email, password, UserRole.admin);
     this.logger.log(`Seeded initial admin user: ${email}`);
+  }
+
+  // ----- self-registration + email verification -----
+
+  /** Registers an UNVERIFIED `user` and returns the verification token to email. */
+  async registerUser(email: string, password: string): Promise<{ user: User; token: string }> {
+    const lower = email.toLowerCase();
+    if (await this.prisma.user.findUnique({ where: { email: lower } })) {
+      throw new ConflictException('Пользователь с таким email уже зарегистрирован');
+    }
+    const passwordHash = await bcrypt.hash(password, 10);
+    const token = randomBytes(32).toString('hex');
+    const user = await this.prisma.user.create({
+      data: {
+        email: lower,
+        passwordHash,
+        role: UserRole.user,
+        verificationToken: token,
+        verificationSentAt: new Date(),
+      },
+    });
+    return { user, token };
+  }
+
+  async verifyEmail(token: string): Promise<User> {
+    const user = await this.prisma.user.findUnique({ where: { verificationToken: token } });
+    if (!user) throw new BadRequestException('Недействительная или уже использованная ссылка');
+    if (Date.now() - (user.verificationSentAt?.getTime() ?? 0) > VERIFICATION_TTL_MS) {
+      throw new BadRequestException('Срок действия ссылки истёк, запросите новую');
+    }
+    return this.prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerifiedAt: new Date(), verificationToken: null },
+    });
+  }
+
+  /** Issues a fresh token for an unverified user; null if not found / already verified. */
+  async refreshVerification(email: string): Promise<{ user: User; token: string } | null> {
+    const user = await this.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    if (!user || user.emailVerifiedAt) return null;
+    const token = randomBytes(32).toString('hex');
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { verificationToken: token, verificationSentAt: new Date() },
+    });
+    return { user: updated, token };
   }
 
   // ----- admin management (returns DTOs) -----
@@ -66,7 +118,7 @@ export class UsersService {
     if (await this.prisma.user.findUnique({ where: { email: lower } })) {
       throw new ConflictException('Пользователь с таким email уже существует');
     }
-    return UserResponseDto.from(await this.create(lower, password));
+    return UserResponseDto.from(await this.create(lower, password, UserRole.admin));
   }
 
   async updateAdmin(id: string, dto: { email?: string; password?: string }): Promise<UserResponseDto> {
@@ -93,7 +145,7 @@ export class UsersService {
     if (user.id === currentUserId) {
       throw new BadRequestException('Нельзя удалить собственную учётную запись');
     }
-    if ((await this.prisma.user.count()) <= 1) {
+    if ((await this.prisma.user.count({ where: { role: UserRole.admin } })) <= 1 && user.role === UserRole.admin) {
       throw new BadRequestException('Нельзя удалить последнего администратора');
     }
     await this.prisma.user.delete({ where: { id } });

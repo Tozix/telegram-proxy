@@ -79,6 +79,7 @@ async function bootstrap(): Promise<void> {
     .addTag('auth', 'Авторизация и текущий пользователь')
     .addTag('users', 'Управление администраторами')
     .addTag('bots', 'Управление ботами, вебхуками и журналом доставок')
+    .addTag('stats', 'Сводная статистика (для админов)')
     .addTag('health', 'Проба живости')
     .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swaggerConfig), {

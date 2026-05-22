@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '../../generated/prisma/client';
 import type { Bot } from '../../generated/prisma/client';
 import { randomBytes } from 'node:crypto';
+import type { AuthUser } from '../auth/jwt.strategy';
 import { buildMeta } from '../common/dto/paginated.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -36,7 +37,7 @@ export class BotsService {
 
   // ----- public API (returns DTOs) -----
 
-  async create(dto: CreateBotDto): Promise<BotResponseDto> {
+  async create(dto: CreateBotDto, actor: AuthUser): Promise<BotResponseDto> {
     const existing = await this.prisma.bot.findUnique({ where: { token: dto.token } });
     if (existing) {
       throw new ConflictException('Бот с таким токеном уже зарегистрирован');
@@ -47,6 +48,7 @@ export class BotsService {
 
     let bot = await this.prisma.bot.create({
       data: {
+        userId: actor.userId,
         name: dto.name,
         token: dto.token,
         telegramBotId: me.id != null ? BigInt(me.id) : null,
@@ -63,24 +65,26 @@ export class BotsService {
     return this.toDto(bot);
   }
 
-  async findAll(limit: number, offset: number): Promise<PaginatedBotsDto> {
+  async findAll(limit: number, offset: number, actor: AuthUser): Promise<PaginatedBotsDto> {
+    const where: Prisma.BotWhereInput = actor.role === 'admin' ? {} : { userId: actor.userId };
     const [bots, total] = await this.prisma.$transaction([
       this.prisma.bot.findMany({
+        where,
         orderBy: { createdAt: 'desc' },
         skip: offset,
         take: limit,
       }),
-      this.prisma.bot.count(),
+      this.prisma.bot.count({ where }),
     ]);
     return { ...buildMeta(total, limit, offset), items: bots.map((b) => this.toDto(b)) };
   }
 
-  async findOne(id: string): Promise<BotResponseDto> {
-    return this.toDto(await this.getEntity(id));
+  async findOne(id: string, actor: AuthUser): Promise<BotResponseDto> {
+    return this.toDto(await this.getEntity(id, actor));
   }
 
-  async update(id: string, dto: UpdateBotDto): Promise<BotResponseDto> {
-    const bot = await this.getEntity(id);
+  async update(id: string, dto: UpdateBotDto, actor: AuthUser): Promise<BotResponseDto> {
+    const bot = await this.getEntity(id, actor);
 
     const webhookAffecting =
       (dto.token !== undefined && dto.token !== bot.token) ||
@@ -117,28 +121,32 @@ export class BotsService {
     return this.toDto(updated);
   }
 
-  async remove(id: string, dropPendingUpdates = false): Promise<void> {
-    const bot = await this.getEntity(id);
+  async remove(id: string, actor: AuthUser, dropPendingUpdates = false): Promise<void> {
+    const bot = await this.getEntity(id, actor);
     await this.safeDeleteWebhook(bot, dropPendingUpdates);
     await this.prisma.bot.delete({ where: { id } });
     await this.invalidateTokenCache();
   }
 
-  async refreshWebhook(id: string, dropPendingUpdates = false): Promise<BotResponseDto> {
-    const bot = await this.registerWebhook(await this.getEntity(id), dropPendingUpdates);
+  async refreshWebhook(id: string, actor: AuthUser, dropPendingUpdates = false): Promise<BotResponseDto> {
+    const bot = await this.registerWebhook(await this.getEntity(id, actor), dropPendingUpdates);
     return this.toDto(bot);
   }
 
-  async getWebhookInfo(id: string): Promise<WebhookInfoDto> {
-    const bot = await this.getEntity(id);
+  async getWebhookInfo(id: string, actor: AuthUser): Promise<WebhookInfoDto> {
+    const bot = await this.getEntity(id, actor);
     return WebhookInfoDto.from(await this.telegram.getWebhookInfo(bot.token));
   }
 
   // ----- internal API (returns entities) -----
 
-  async getEntity(id: string): Promise<Bot> {
+  /** Loads a bot, enforcing ownership unless the actor is an admin. */
+  async getEntity(id: string, actor?: AuthUser): Promise<Bot> {
     const bot = await this.prisma.bot.findUnique({ where: { id } });
     if (!bot) throw new NotFoundException('Бот не найден');
+    if (actor && actor.role !== 'admin' && bot.userId !== actor.userId) {
+      throw new NotFoundException('Бот не найден'); // hide existence from non-owners
+    }
     return bot;
   }
 

@@ -18,6 +18,7 @@ import {
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -27,6 +28,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
+import { AdminGuard } from '../auth/admin.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { AuthUser } from '../auth/jwt.strategy';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
@@ -40,7 +42,8 @@ import { UsersService } from './users.service';
 @ApiTags('users')
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ type: ErrorResponseDto, description: 'Отсутствует или неверный bearer-токен' })
-@UseGuards(JwtAuthGuard)
+@ApiForbiddenResponse({ type: ErrorResponseDto, description: 'Требуются права администратора' })
+@UseGuards(JwtAuthGuard, AdminGuard)
 @Controller('api/users')
 export class UsersController {
   constructor(private readonly users: UsersService) {}

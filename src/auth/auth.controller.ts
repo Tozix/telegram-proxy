@@ -1,7 +1,11 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -9,9 +13,12 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
+import { MessageResponseDto } from '../common/dto/message-response.dto';
 import { AuthService } from './auth.service';
 import { AuthUserDto } from './dto/auth-user.dto';
 import { LoginDto, LoginResponseDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { ResendVerificationDto, VerifyEmailDto } from './dto/verify.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthUser } from './jwt.strategy';
 
@@ -19,6 +26,36 @@ import type { AuthUser } from './jwt.strategy';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
+
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Регистрация',
+    description: 'Создаёт пользователя (роль `user`) и отправляет письмо для подтверждения email.',
+  })
+  @ApiCreatedResponse({ type: MessageResponseDto, description: 'Письмо отправлено' })
+  @ApiBadRequestResponse({ type: ErrorResponseDto, description: 'Ошибка валидации' })
+  @ApiConflictResponse({ type: ErrorResponseDto, description: 'Email уже зарегистрирован' })
+  register(@Body() dto: RegisterDto): Promise<MessageResponseDto> {
+    return this.auth.register(dto.email, dto.password);
+  }
+
+  @Post('verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Подтверждение email', description: 'Подтверждает email по токену из письма.' })
+  @ApiOkResponse({ type: MessageResponseDto, description: 'Email подтверждён' })
+  @ApiBadRequestResponse({ type: ErrorResponseDto, description: 'Недействительный или просроченный токен' })
+  verify(@Body() dto: VerifyEmailDto): Promise<MessageResponseDto> {
+    return this.auth.verifyEmail(dto.token);
+  }
+
+  @Post('resend')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Повторная отправка письма', description: 'Повторно отправляет письмо подтверждения, если email ещё не подтверждён.' })
+  @ApiOkResponse({ type: MessageResponseDto })
+  resend(@Body() dto: ResendVerificationDto): Promise<MessageResponseDto> {
+    return this.auth.resendVerification(dto.email);
+  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -32,6 +69,7 @@ export class AuthController {
   })
   @ApiOkResponse({ type: LoginResponseDto, description: 'Авторизация успешна' })
   @ApiUnauthorizedResponse({ type: ErrorResponseDto, description: 'Неверные учётные данные' })
+  @ApiForbiddenResponse({ type: ErrorResponseDto, description: 'Email не подтверждён' })
   login(@Body() dto: LoginDto): Promise<LoginResponseDto> {
     return this.auth.login(dto.email, dto.password);
   }

@@ -7,6 +7,8 @@ export interface AppConfig {
   port: number;
   /** Public origin under which Telegram reaches this service, e.g. https://proxy.example.com */
   publicBaseUrl: string;
+  /** Public origin of the web UI — used to build email links (e.g. verification). */
+  appUrl: string;
   database: {
     /** Prisma connection string, e.g. postgresql://user:pass@host:5432/db?schema=public */
     url: string;
@@ -34,6 +36,16 @@ export interface AppConfig {
     keyPrefix: string;
     /** TTL (seconds) for the "is this token registered?" proxy guard cache. */
     tokenCacheTtlSeconds: number;
+  };
+  mail: {
+    host: string;
+    port: number;
+    /** SSL/TLS on connect (true for port 465). */
+    secure: boolean;
+    user: string;
+    pass: string;
+    from: string;
+    fromName: string;
   };
   proxy: {
     /** Allow proxying Bot API calls for tokens that are not registered in the admin. */
@@ -65,6 +77,7 @@ export default (): AppConfig => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: toInt(process.env.PORT, 3000),
   publicBaseUrl: (process.env.PUBLIC_BASE_URL ?? 'https://proxy.example.com').replace(/\/+$/, ''),
+  appUrl: (process.env.APP_URL ?? process.env.PUBLIC_BASE_URL ?? 'http://localhost:3001').replace(/\/+$/, ''),
   database: {
     url:
       process.env.DATABASE_URL ??
@@ -89,6 +102,15 @@ export default (): AppConfig => ({
     db: toInt(process.env.REDIS_DB, 0),
     keyPrefix: process.env.REDIS_KEY_PREFIX ?? 'tgproxy:',
     tokenCacheTtlSeconds: toInt(process.env.REDIS_TOKEN_CACHE_TTL, 30),
+  },
+  mail: {
+    host: process.env.MAIL_HOST ?? '',
+    port: toInt(process.env.MAIL_PORT, 587),
+    secure: toBool(process.env.MAIL_SSL, false),
+    user: process.env.MAIL_USERNAME ?? '',
+    pass: process.env.MAIL_PASSWORD ?? '',
+    from: process.env.MAIL_FROM ?? (process.env.MAIL_USERNAME ?? ''),
+    fromName: process.env.MAIL_FROM_NAME ?? 'Telegram Proxy',
   },
   proxy: {
     allowUnregistered: toBool(process.env.PROXY_ALLOW_UNREGISTERED, false),

@@ -11,6 +11,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -28,7 +29,9 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { AuthUser } from '../auth/jwt.strategy';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { BotsService } from './bots.service';
@@ -37,6 +40,8 @@ import { CreateBotDto } from './dto/create-bot.dto';
 import { PaginatedBotsDto } from './dto/paginated-bots.dto';
 import { UpdateBotDto } from './dto/update-bot.dto';
 import { WebhookInfoDto } from './dto/webhook-info.dto';
+
+const actor = (req: Request): AuthUser => req.user as AuthUser;
 
 @ApiTags('bots')
 @ApiBearerAuth()
@@ -51,22 +56,24 @@ export class BotsController {
     summary: 'Зарегистрировать бота',
     description:
       'Проверяет токен через `getMe`, генерирует секрет вебхука и вызывает Telegram `setWebhook`, ' +
-      'указывая `{PUBLIC_BASE_URL}/webhook/<secret>`. Бот создаётся даже если setWebhook не удался — ' +
-      'смотрите поле `webhookError` в ответе.',
+      'указывая `{PUBLIC_BASE_URL}/webhook/<secret>`. Бот привязывается к текущему пользователю.',
   })
   @ApiCreatedResponse({ type: BotResponseDto, description: 'Бот зарегистрирован' })
   @ApiBadRequestResponse({ type: ErrorResponseDto, description: 'Ошибка валидации' })
   @ApiConflictResponse({ type: ErrorResponseDto, description: 'Бот с таким токеном уже существует' })
   @ApiBadGatewayResponse({ type: ErrorResponseDto, description: 'Telegram отклонил токен (getMe не удался)' })
-  create(@Body() dto: CreateBotDto): Promise<BotResponseDto> {
-    return this.bots.create(dto);
+  create(@Body() dto: CreateBotDto, @Req() req: Request): Promise<BotResponseDto> {
+    return this.bots.create(dto, actor(req));
   }
 
   @Get()
-  @ApiOperation({ summary: 'Список ботов', description: 'Список ботов (limit/offset), новые сверху.' })
+  @ApiOperation({
+    summary: 'Список ботов',
+    description: 'Список ботов (limit/offset). Обычный пользователь видит только свои, админ — все.',
+  })
   @ApiOkResponse({ type: PaginatedBotsDto })
-  findAll(@Query() query: PaginationQueryDto): Promise<PaginatedBotsDto> {
-    return this.bots.findAll(query.limit, query.offset);
+  findAll(@Query() query: PaginationQueryDto, @Req() req: Request): Promise<PaginatedBotsDto> {
+    return this.bots.findAll(query.limit, query.offset, actor(req));
   }
 
   @Get(':id')
@@ -74,8 +81,8 @@ export class BotsController {
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOkResponse({ type: BotResponseDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Бот не найден' })
-  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<BotResponseDto> {
-    return this.bots.findOne(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request): Promise<BotResponseDto> {
+    return this.bots.findOne(id, actor(req));
   }
 
   @Patch(':id')
@@ -90,8 +97,12 @@ export class BotsController {
   @ApiBadRequestResponse({ type: ErrorResponseDto, description: 'Ошибка валидации' })
   @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Бот не найден' })
   @ApiConflictResponse({ type: ErrorResponseDto, description: 'Токен уже используется другим ботом' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateBotDto): Promise<BotResponseDto> {
-    return this.bots.update(id, dto);
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateBotDto,
+    @Req() req: Request,
+  ): Promise<BotResponseDto> {
+    return this.bots.update(id, dto, actor(req));
   }
 
   @Delete(':id')
@@ -103,9 +114,10 @@ export class BotsController {
   @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Бот не найден' })
   async remove(
     @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
     @Query('dropPendingUpdates', new ParseBoolPipe({ optional: true })) dropPendingUpdates?: boolean,
   ): Promise<void> {
-    await this.bots.remove(id, dropPendingUpdates ?? false);
+    await this.bots.remove(id, actor(req), dropPendingUpdates ?? false);
   }
 
   @Post(':id/refresh-webhook')
@@ -116,9 +128,10 @@ export class BotsController {
   @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Бот не найден' })
   refreshWebhook(
     @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
     @Query('dropPendingUpdates', new ParseBoolPipe({ optional: true })) dropPendingUpdates?: boolean,
   ): Promise<BotResponseDto> {
-    return this.bots.refreshWebhook(id, dropPendingUpdates ?? false);
+    return this.bots.refreshWebhook(id, actor(req), dropPendingUpdates ?? false);
   }
 
   @Get(':id/webhook-info')
@@ -127,7 +140,7 @@ export class BotsController {
   @ApiOkResponse({ type: WebhookInfoDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto, description: 'Бот не найден' })
   @ApiBadGatewayResponse({ type: ErrorResponseDto, description: 'Telegram API недоступен' })
-  webhookInfo(@Param('id', ParseUUIDPipe) id: string): Promise<WebhookInfoDto> {
-    return this.bots.getWebhookInfo(id);
+  webhookInfo(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request): Promise<WebhookInfoDto> {
+    return this.bots.getWebhookInfo(id, actor(req));
   }
 }

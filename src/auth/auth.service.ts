@@ -1,8 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { User } from '../../generated/prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
 import { LoginResponseDto } from './dto/login.dto';
 import type { JwtPayload } from './jwt.strategy';
@@ -13,6 +14,7 @@ export class AuthService {
     private readonly users: UsersService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly mail: MailService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<User> {
@@ -20,7 +22,29 @@ export class AuthService {
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       throw new UnauthorizedException('Неверные учётные данные');
     }
+    if (!user.emailVerifiedAt) {
+      throw new ForbiddenException('Подтвердите email перед входом');
+    }
     return user;
+  }
+
+  /** Public self-registration: creates an unverified user and emails a link. */
+  async register(email: string, password: string): Promise<{ message: string }> {
+    const { user, token } = await this.users.registerUser(email, password);
+    await this.mail.sendVerificationEmail(user.email, token);
+    return { message: 'Регистрация успешна. Проверьте почту и подтвердите email.' };
+  }
+
+  async verifyEmail(token: string): Promise<{ message: string }> {
+    await this.users.verifyEmail(token);
+    return { message: 'Email подтверждён. Теперь можно войти.' };
+  }
+
+  async resendVerification(email: string): Promise<{ message: string }> {
+    const res = await this.users.refreshVerification(email);
+    if (res) await this.mail.sendVerificationEmail(res.user.email, res.token);
+    // Не раскрываем, существует ли аккаунт.
+    return { message: 'Если аккаунт не подтверждён, письмо отправлено повторно.' };
   }
 
   async login(email: string, password: string): Promise<LoginResponseDto> {

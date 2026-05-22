@@ -34,10 +34,11 @@ async function main(): Promise<void> {
   try {
     const passwordHash = await bcrypt.hash(password, 10);
     const lower = email.toLowerCase();
+    const now = new Date();
     const user = await prisma.user.upsert({
       where: { email: lower },
-      update: { passwordHash, role: UserRole.admin },
-      create: { email: lower, passwordHash, role: UserRole.admin },
+      update: { passwordHash, role: UserRole.admin, emailVerifiedAt: now },
+      create: { email: lower, passwordHash, role: UserRole.admin, emailVerifiedAt: now },
     });
     console.log(`✓ Администратор сохранён: ${user.email}`);
   } finally {

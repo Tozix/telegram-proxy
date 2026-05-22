@@ -13,8 +13,18 @@ export class UserResponseDto {
   email!: string;
 
   @Expose()
-  @ApiProperty({ example: 'admin' })
+  @ApiProperty({ example: 'admin', enum: ['admin', 'user'] })
   role!: string;
+
+  @Expose()
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    example: '2026-05-22T07:45:00.000Z',
+    description: 'Когда подтверждён email (null = не подтверждён)',
+  })
+  emailVerifiedAt!: Date | null;
 
   @Expose()
   @ApiProperty({ type: String, format: 'date-time', example: '2026-05-22T07:40:00.000Z' })
