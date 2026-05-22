@@ -49,7 +49,15 @@ Notes:
 
 ## Backend architecture
 
-NestJS 11 + Prisma 7 (PostgreSQL) + Redis (ioredis). Modules: `prisma`, `redis`, `users`, `auth`, `telegram`, `bots`, `proxy` ([src/app.module.ts](src/app.module.ts)).
+NestJS 11 + Prisma 7 (PostgreSQL) + Redis (ioredis). Modules: `prisma`, `redis`, `mail`, `users`, `auth`, `telegram`, `bots`, `proxy`, `stats` ([src/app.module.ts](src/app.module.ts)).
+
+### Auth, roles & multi-tenancy (critical)
+
+- **Roles** (`UserRole`): `admin` and `user`. Self-registration (`POST /auth/register`) creates a `user`; admins are created verified via seed / `create-admin` CLI / `POST /api/users`.
+- **Email verification**: registration emails a link (`{APP_URL}/verify?token=…`) via [MailService](src/mail/mail.service.ts) (nodemailer; if `MAIL_HOST` is empty it logs the link instead of sending). `POST /auth/verify` confirms; **login is blocked (403) until `emailVerifiedAt` is set**.
+- **Ownership**: each `Bot` has `userId`. [BotsService](src/bots/bots.service.ts) methods take the `AuthUser` actor — a `user` only sees/touches their own bots; an `admin` sees all. `getEntity(id, actor)` returns 404 to non-owners (hides existence). Delivery-log access is authorized the same way.
+- **Guards**: [AdminGuard](src/auth/admin.guard.ts) (role check) gates `/api/users` and `/api/stats`: `@UseGuards(JwtAuthGuard, AdminGuard)`. Regular bot endpoints are JwtAuthGuard-only but owner-scoped in the service.
+- **Stats**: `GET /api/stats` (admin) → counts + 14-day delivery series (`$queryRaw` with `date_trunc`) + top bots, for the dashboard.
 
 ### Data layer: Prisma 7 (critical)
 
@@ -85,10 +93,11 @@ The inbound webhook (`POST /webhook/:secret`) **is** a normal controller ([Webho
 
 ## Frontend architecture (BFF)
 
-Next.js 15 App Router + Tailwind v4 (IBM Plex Sans/Mono via `next/font`), `output: 'standalone'`. The browser **never** sees the JWT or talks to the backend directly:
+Next.js 15 App Router + Tailwind v4, **dark theme everywhere** (IBM Plex Sans/Mono self-hosted via `@fontsource`; shared class fragments in [frontend/src/lib/ui.ts](frontend/src/lib/ui.ts); Telegram-cyan `tg-*` colors in `globals.css`). `output: 'standalone'`. The browser **never** sees the JWT or talks to the backend directly:
 
-- **Route groups**: `(marketing)` = public pages — landing `/` and docs `/guide` (dark, `src/lib/site.ts` + `src/lib/examples.ts`, code via `CodeBlock`/`CodeTabs`); `(app)` = the authed admin shell (`/bots`, …). `/login` uses the minimal root layout. Only the root layout renders `<html>/<body>`; group layouts render their own chrome.
-- [frontend/src/middleware.ts](frontend/src/middleware.ts): public paths are `/`, `/guide`, `/login` (see `PUBLIC_PATHS`); everything else without a token bounces to `/login`. Keep this set in sync when adding public pages.
+- **Route groups**: `(marketing)` = public landing `/` + docs `/guide`; `(app)` = authed shell — `/dashboard` (admin), `/bots`, `/users` (admin). The `(app)` layout fetches `/auth/me` and renders **role-based nav** (Dashboard/Users only for admins). `/login`, `/register`, `/verify` use the minimal root layout. Only the root layout renders `<html>/<body>`.
+- Charts: `/dashboard` is admin-only (redirects non-admins) and uses **Recharts** in the client component [DashboardCharts](frontend/src/components/DashboardCharts.tsx).
+- [frontend/src/middleware.ts](frontend/src/middleware.ts): public paths are `/`, `/guide`, `/login`, `/register`, `/verify` (see `PUBLIC_PATHS`); everything else without a token bounces to `/login`. Keep this set in sync when adding public pages.
 - JWT lives in an `httpOnly` cookie (`tp_token`, [frontend/src/lib/session.ts](frontend/src/lib/session.ts)).
 - All mutations go through **Server Actions** ([frontend/src/app/actions.ts](frontend/src/app/actions.ts)); pages fetch server-side via [frontend/src/lib/api.ts](frontend/src/lib/api.ts), which attaches the cookie token and bounces to `/login` on 401.
 - `API_URL` is **server-only**; browser-visible config uses `NEXT_PUBLIC_*` (`PROXY_HOST`, `SWAGGER_URL`, `GITHUB_URL` in `src/lib/site.ts`) so the docs show the deployer's domain. No real domain is hard-coded — examples use `proxy.example.com`.

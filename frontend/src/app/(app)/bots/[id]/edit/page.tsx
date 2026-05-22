@@ -3,6 +3,7 @@ import { updateBot } from '@/app/actions';
 import { BotForm } from '@/components/BotForm';
 import { api } from '@/lib/api';
 import type { Bot } from '@/lib/types';
+import { cardPad } from '@/lib/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,12 +14,12 @@ export default async function EditBotPage({ params }: { params: Promise<{ id: st
   return (
     <div>
       <div className="mb-6">
-        <Link href={`/bots/${bot.id}`} className="text-sm text-slate-500 hover:text-slate-700">
+        <Link href={`/bots/${bot.id}`} className="text-sm text-slate-400 hover:text-white">
           ← К боту
         </Link>
-        <h1 className="mt-2 text-xl font-semibold text-slate-900">Редактирование: {bot.name}</h1>
+        <h1 className="mt-2 text-2xl font-bold text-white">Редактирование: {bot.name}</h1>
       </div>
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className={cardPad}>
         <BotForm mode="edit" action={updateBot} bot={bot} />
       </div>
     </div>

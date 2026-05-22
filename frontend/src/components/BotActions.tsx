@@ -1,6 +1,7 @@
 'use client';
 
 import { deleteBot, refreshWebhook } from '@/app/actions';
+import { btnGhost } from '@/lib/ui';
 import { SubmitButton } from './SubmitButton';
 
 export function BotActions({ id }: { id: string }) {
@@ -8,10 +9,7 @@ export function BotActions({ id }: { id: string }) {
     <div className="flex flex-wrap gap-3">
       <form action={refreshWebhook}>
         <input type="hidden" name="id" value={id} />
-        <SubmitButton
-          pendingLabel="Обновление…"
-          className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-        >
+        <SubmitButton pendingLabel="Обновление…" className={btnGhost}>
           Обновить вебхук
         </SubmitButton>
       </form>
@@ -25,7 +23,7 @@ export function BotActions({ id }: { id: string }) {
         <input type="hidden" name="id" value={id} />
         <SubmitButton
           pendingLabel="Удаление…"
-          className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+          className="inline-flex items-center justify-center rounded-lg border border-red-500/30 px-4 py-2 text-sm font-medium text-red-300 transition hover:bg-red-500/10 disabled:opacity-60"
         >
           Удалить
         </SubmitButton>

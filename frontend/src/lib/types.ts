@@ -49,8 +49,17 @@ export interface AdminUser {
   id: string;
   email: string;
   role: string;
+  emailVerifiedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Stats {
+  users: { total: number; verified: number; admins: number };
+  bots: { total: number; active: number; withErrors: number };
+  deliveries: { total: number; success: number; failed: number; last24h: number };
+  series: { date: string; total: number; success: number; failed: number }[];
+  topBots: { id: string; name: string; deliveries: number }[];
 }
 
 export interface LoginResponse {

@@ -41,6 +41,32 @@ export async function logout(): Promise<void> {
   redirect('/login');
 }
 
+export type RegisterState = { error?: string; ok?: boolean; email?: string };
+
+export async function registerUser(_prev: RegisterState, formData: FormData): Promise<RegisterState> {
+  const email = String(formData.get('email') ?? '').trim();
+  const password = String(formData.get('password') ?? '');
+  if (!email || !password) return { error: 'Введите email и пароль' };
+
+  try {
+    await api.post('/auth/register', { email, password }, false);
+  } catch (e) {
+    return { error: message(e, 'Не удалось зарегистрироваться') };
+  }
+  return { ok: true, email };
+}
+
+export async function resendVerification(_prev: RegisterState, formData: FormData): Promise<RegisterState> {
+  const email = String(formData.get('email') ?? '').trim();
+  if (!email) return { error: 'Укажите email' };
+  try {
+    await api.post('/auth/resend', { email }, false);
+  } catch (e) {
+    return { error: message(e, 'Не удалось отправить письмо') };
+  }
+  return { ok: true, email };
+}
+
 export async function createBot(_prev: FormState, formData: FormData): Promise<FormState> {
   const body: Record<string, unknown> = {
     name: String(formData.get('name') ?? '').trim(),

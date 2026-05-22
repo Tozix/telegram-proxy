@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     // suppressHydrationWarning: браузерные расширения (LanguageTool/Grammarly)
     // дописывают атрибуты в <html>/<body> до гидрации — это не наш рассинхрон.
     <html lang="ru" suppressHydrationWarning>
-      <body className="min-h-full bg-slate-50 font-sans text-slate-900 antialiased" suppressHydrationWarning>
+      <body className="min-h-full bg-[#0a0e14] font-sans text-slate-200 antialiased" suppressHydrationWarning>
         {children}
       </body>
     </html>

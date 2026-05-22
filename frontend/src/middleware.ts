@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 const TOKEN_COOKIE = 'tp_token';
 
 // Public pages reachable without a session.
-const PUBLIC_PATHS = new Set(['/', '/guide', '/login']);
+const PUBLIC_PATHS = new Set(['/', '/guide', '/login', '/register', '/verify']);
 
 export function middleware(req: NextRequest) {
   const token = req.cookies.get(TOKEN_COOKIE)?.value;

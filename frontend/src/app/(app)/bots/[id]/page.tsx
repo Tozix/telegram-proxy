@@ -5,6 +5,7 @@ import { Pagination } from '@/components/Pagination';
 import { api, ApiError } from '@/lib/api';
 import { formatDate, formatUnix } from '@/lib/format';
 import type { Bot, DeliveryLog, Paginated, WebhookInfo } from '@/lib/types';
+import { btnGhost, card, td, th } from '@/lib/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,15 +15,15 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-3 gap-4 px-4 py-3">
       <dt className="text-sm text-slate-500">{label}</dt>
-      <dd className="col-span-2 break-all text-sm text-slate-900">{children}</dd>
+      <dd className="col-span-2 break-all text-sm text-slate-200">{children}</dd>
     </div>
   );
 }
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-      <h2 className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900">{title}</h2>
+    <section className={card}>
+      <h2 className="border-b border-white/5 px-4 py-3 text-sm font-semibold text-white">{title}</h2>
       {children}
     </section>
   );
@@ -56,28 +57,25 @@ export default async function BotDetailPage({
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <Link href="/bots" className="text-sm text-slate-500 hover:text-slate-700">
+          <Link href="/bots" className="text-sm text-slate-400 hover:text-white">
             ← К списку ботов
           </Link>
-          <h1 className="mt-2 text-xl font-semibold text-slate-900">{bot.name}</h1>
+          <h1 className="mt-2 text-2xl font-bold text-white">{bot.name}</h1>
           {bot.username && <p className="text-sm text-slate-500">@{bot.username}</p>}
         </div>
-        <Link
-          href={`/bots/${bot.id}/edit`}
-          className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
+        <Link href={`/bots/${bot.id}/edit`} className={btnGhost}>
           Редактировать
         </Link>
       </div>
 
       {bot.webhookError && (
-        <div className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
           Последняя установка вебхука завершилась ошибкой: {bot.webhookError}
         </div>
       )}
 
       <Card title="Параметры">
-        <dl className="divide-y divide-slate-100">
+        <dl className="divide-y divide-white/5">
           <Row label="Статус">{bot.isActive ? 'Активен' : 'Выключен'}</Row>
           <Row label="Telegram ID">{bot.telegramBotId ?? '—'}</Row>
           <Row label="Токен">{bot.tokenPreview}</Row>
@@ -93,9 +91,9 @@ export default async function BotDetailPage({
 
       <Card title="Webhook info (из Telegram)">
         {webhookInfoError ? (
-          <p className="px-4 py-3 text-sm text-amber-700">{webhookInfoError}</p>
+          <p className="px-4 py-3 text-sm text-amber-300">{webhookInfoError}</p>
         ) : webhookInfo ? (
-          <dl className="divide-y divide-slate-100">
+          <dl className="divide-y divide-white/5">
             <Row label="URL">{webhookInfo.url || '—'}</Row>
             <Row label="Ожидает апдейтов">{webhookInfo.pending_update_count}</Row>
             <Row label="IP">{webhookInfo.ip_address ?? '—'}</Row>
@@ -114,36 +112,36 @@ export default async function BotDetailPage({
           <p className="px-4 py-3 text-sm text-slate-500">Пока нет доставок.</p>
         ) : (
           <>
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <table className="w-full">
+              <thead className="bg-white/[0.03]">
                 <tr>
-                  <th className="px-4 py-2 font-medium">Время</th>
-                  <th className="px-4 py-2 font-medium">update_id</th>
-                  <th className="px-4 py-2 font-medium">Статус</th>
-                  <th className="px-4 py-2 font-medium">HTTP</th>
-                  <th className="px-4 py-2 font-medium">Попытка</th>
-                  <th className="px-4 py-2 font-medium">мс</th>
-                  <th className="px-4 py-2 font-medium">Ошибка</th>
+                  <th className={th}>Время</th>
+                  <th className={th}>update_id</th>
+                  <th className={th}>Статус</th>
+                  <th className={th}>HTTP</th>
+                  <th className={th}>Попытка</th>
+                  <th className={th}>мс</th>
+                  <th className={th}>Ошибка</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-white/5">
                 {logs.items.map((log) => (
                   <tr key={log.id}>
-                    <td className="px-4 py-2 text-slate-600">{formatDate(log.createdAt)}</td>
-                    <td className="px-4 py-2 text-slate-600">{log.updateId ?? '—'}</td>
-                    <td className="px-4 py-2">
+                    <td className={`${td} text-slate-400`}>{formatDate(log.createdAt)}</td>
+                    <td className={`${td} text-slate-400`}>{log.updateId ?? '—'}</td>
+                    <td className={td}>
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          log.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                          log.success ? 'bg-green-500/15 text-green-300' : 'bg-red-500/15 text-red-300'
                         }`}
                       >
                         {log.success ? 'OK' : 'FAIL'}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-slate-600">{log.responseStatus ?? '—'}</td>
-                    <td className="px-4 py-2 text-slate-600">{log.attempt}</td>
-                    <td className="px-4 py-2 text-slate-600">{log.durationMs}</td>
-                    <td className="px-4 py-2 max-w-xs truncate text-slate-500" title={log.errorMessage ?? ''}>
+                    <td className={`${td} text-slate-400`}>{log.responseStatus ?? '—'}</td>
+                    <td className={`${td} text-slate-400`}>{log.attempt}</td>
+                    <td className={`${td} text-slate-400`}>{log.durationMs}</td>
+                    <td className={`${td} max-w-xs truncate text-slate-500`} title={log.errorMessage ?? ''}>
                       {log.errorMessage ?? '—'}
                     </td>
                   </tr>
@@ -151,11 +149,7 @@ export default async function BotDetailPage({
               </tbody>
             </table>
             <div className="px-4 pb-4">
-              <Pagination
-                page={logsPage}
-                totalPages={logsTotalPages}
-                hrefFor={(p) => `/bots/${id}?logsPage=${p}`}
-              />
+              <Pagination page={logsPage} totalPages={logsTotalPages} hrefFor={(p) => `/bots/${id}?logsPage=${p}`} />
             </div>
           </>
         )}
