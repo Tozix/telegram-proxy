@@ -14,18 +14,34 @@ services:
       timeout: 5s
       retries: 15
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--save', '60', '1', '--loglevel', 'warning']
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   app:
     build: .
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - .env
     environment:
-      # Override DB host so the app reaches the compose Postgres service.
+      # Override DB/Redis hosts so the app reaches the compose services.
       DB_HOST: postgres
       DB_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     ports:
       - '${PORT:-3000}:3000'
     healthcheck:
@@ -57,3 +73,4 @@ services:
 
 volumes:
   pgdata:
+  redisdata:

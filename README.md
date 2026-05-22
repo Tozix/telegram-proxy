@@ -23,56 +23,246 @@
 
 **Backend** ([`/`](.)):
 - **NestJS 11** + TypeScript, рантайм и пакетный менеджер — **Bun** (TS исполняется напрямую, без сборки)
-- **PostgreSQL** + TypeORM
+- **PostgreSQL** + TypeORM — хранение ботов, токенов, журнала доставок, админов
+- **Redis** (ioredis) — кэш «is token registered?» для open-relay-гарда прокси
+  (общий для нескольких инстансов, переживает рестарт; БД остаётся источником истины)
 - Авторизация админ-API — **JWT** (email + пароль)
 - DTO на **class-validator / class-transformer**, ответы через `ClassSerializerInterceptor`
 - Документация — **Swagger** (`/docs`) с примерами запросов/ответов
 
 **Frontend** ([`/frontend`](frontend/)) — веб-админка:
 - **Next.js 15** (App Router) + **Tailwind CSS v4**, рантайм **Bun**
-- `output: 'standalone'` — свой Node-совместимый сервер, **без nginx**
+- `output: 'standalone'` — свой Node-совместимый сервер
 - Авторизация по схеме **BFF**: JWT хранится в `httpOnly`-cookie, браузер общается
   только с Next.js (CORS не нужен, токен в JS не попадает)
 
-**Деплой** — единый **docker-compose** (postgres + backend + frontend).
+**Деплой** — единый **docker-compose** (postgres + redis + backend + frontend) за
+reverse-proxy (nginx) с TLS.
+
+## Содержание
+
+- [Быстрый старт (Docker)](#быстрый-старт-docker)
+- [Локальный запуск (Bun + Postgres/Redis на хост-машине)](#локальный-запуск-bun--postgresredis-на-хост-машине)
+- [Доступ в админку и сид администратора](#доступ-в-админку-и-сид-администратора)
+- [Деплой на сервере (Docker + nginx)](#деплой-на-сервере-docker--nginx)
+- [Переменные окружения](#переменные-окружения)
+- [Админ-API](#админ-api)
+- [Как работает проксирование](#как-работает-проксирование)
+- [Безопасность](#безопасность)
+- [Прод-замечание про БД](#прод-замечание-про-бд)
 
 ## Быстрый старт (Docker)
 
+Поднимает всё разом: Postgres, Redis, backend и админку.
+
 ```bash
 cp .env.example .env
-# отредактируйте .env: JWT_SECRET, ADMIN_*, PUBLIC_BASE_URL, DB_PASSWORD
+# отредактируйте .env: JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, PUBLIC_BASE_URL, DB_PASSWORD
 docker compose up -d --build
 ```
 
-Поднимутся три сервиса:
+Поднимутся четыре сервиса:
 
 | Сервис | URL | Назначение |
 |---|---|---|
 | `app` (backend) | `http://<host>:3000` | прокси + админ-API + Swagger `/docs` |
 | `frontend` | `http://<host>:8080` | веб-админка (порт = `FRONTEND_PORT`) |
-| `postgres` | — | БД (без проброса наружу) |
+| `postgres` | — | БД (наружу не проброшена) |
+| `redis` | — | кэш гарда прокси (наружу не проброшен) |
 
-При первом запуске создаётся админ из `ADMIN_EMAIL`/`ADMIN_PASSWORD`. Зайдите на
+При первом запуске создаётся админ из `ADMIN_EMAIL`/`ADMIN_PASSWORD` (см.
+[Доступ в админку](#доступ-в-админку-и-сид-администратора)). Откройте
 **`http://<host>:8080`** и войдите этими данными.
 
-## Быстрый старт (локально, Bun)
-
-Backend:
+Логи / остановка:
 ```bash
-bun install
-cp .env.example .env          # укажите доступ к локальному Postgres
-bun run start:dev             # hot-reload на :3000
+docker compose logs -f app          # логи backend
+docker compose down                 # остановить
+docker compose down -v              # остановить и стереть данные (pgdata, redisdata)
 ```
 
-Frontend (в отдельном терминале):
+## Локальный запуск (Bun + Postgres/Redis на хост-машине)
+
+Сценарий для разработки: **Postgres и Redis крутятся на хост-машине**, а backend и
+frontend запускаются напрямую через Bun (с hot-reload).
+
+### 1. Поднять Postgres и Redis на хосте
+
+**Вариант А — отдельными docker-контейнерами** (быстрее всего, удобно в WSL):
+
+```bash
+docker run -d --name tp-postgres \
+  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=telegram_proxy \
+  -p 5432:5432 postgres:17-alpine
+
+docker run -d --name tp-redis -p 6379:6379 redis:7-alpine
+```
+
+**Вариант Б — нативные пакеты** (Debian/Ubuntu/WSL):
+
+```bash
+sudo apt update && sudo apt install -y postgresql redis-server
+sudo service postgresql start
+sudo service redis-server start
+# создать пользователя/базу (пароль для роли postgres задайте под свой .env):
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
+sudo -u postgres psql -c "CREATE DATABASE telegram_proxy;"
+```
+
+> Таблицы создавать вручную не нужно: при `DB_SYNCHRONIZE=true` TypeORM создаёт схему
+> из сущностей при старте. Нужна только сама БД (`telegram_proxy`).
+
+Проверка, что сервисы живы:
+```bash
+pg_isready -h localhost -p 5432        # postgres
+redis-cli -h localhost -p 6379 ping    # -> PONG
+```
+
+### 2. Backend
+
+```bash
+bun install
+cp .env.example .env
+```
+
+Отредактируйте `.env` под локальные сервисы (значения по умолчанию из
+`.env.example` уже подходят для контейнеров/нативной установки выше):
+
+```ini
+PUBLIC_BASE_URL=http://localhost:3000
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_NAME=telegram_proxy
+DB_SYNCHRONIZE=true
+REDIS_HOST=localhost
+REDIS_PORT=6379
+JWT_SECRET=local-dev-secret-change-me-0123456789   # ≥16 символов
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=admin12345
+```
+
+Запуск:
+```bash
+bun run start:dev      # hot-reload на http://localhost:3000
+```
+
+Проверка:
+```bash
+curl http://localhost:3000/health           # {"status":"ok",...}
+open http://localhost:3000/docs             # Swagger UI
+```
+
+### 3. Frontend (в отдельном терминале)
+
 ```bash
 cd frontend
 bun install
-cp .env.example .env          # API_URL=http://localhost:3000
-bun run dev                   # :3001
+cp .env.example .env        # API_URL=http://localhost:3000, COOKIE_SECURE=false
+bun run dev                 # http://localhost:3001
 ```
 
-Проверка типов: `bun run typecheck` (в каждом из каталогов).
+Откройте **http://localhost:3001** и войдите данными `ADMIN_EMAIL`/`ADMIN_PASSWORD`.
+
+### 4. Проверка типов
+
+`bun run typecheck` — единственный рабочий чек (в корне **и** в `frontend/`).
+ESLint/Prettier в проекте не настроены, их скрипты упадут.
+
+## Доступ в админку и сид администратора
+
+**Сид администратора создаётся автоматически.** При старте backend вызывает
+`UsersService.ensureAdmin()`: если таблица `users` **пуста**, создаётся один админ
+из переменных окружения:
+
+| Переменная | По умолчанию |
+|---|---|
+| `ADMIN_EMAIL` | `admin@example.com` |
+| `ADMIN_PASSWORD` | `admin12345` |
+
+В логах при первом старте появится: `Seeded initial admin user: <email>`.
+
+**Как войти:**
+1. Откройте веб-админку (`http://localhost:3001` локально или `http://<host>:8080` /
+   ваш домен в проде).
+2. Введите `ADMIN_EMAIL` и `ADMIN_PASSWORD`.
+3. После входа JWT кладётся в `httpOnly`-cookie `tp_token`; вы попадаете в `/bots`.
+
+Либо через API напрямую — `POST /auth/login` (см. [Админ-API](#админ-api)).
+
+> **Важно:** сид срабатывает только при пустой таблице `users`. Если вы поменяете
+> `ADMIN_PASSWORD` в `.env` уже после первого старта, существующий админ **не**
+> обновится.
+
+**Сбросить пароль / пересоздать админа** (используя только автосид):
+
+```bash
+# 1. остановить backend
+# 2. очистить таблицу пользователей
+docker compose exec postgres psql -U postgres -d telegram_proxy -c "DELETE FROM users;"
+#    (локально без docker:  psql -h localhost -U postgres -d telegram_proxy -c "DELETE FROM users;")
+# 3. задать нужные ADMIN_EMAIL/ADMIN_PASSWORD в .env и запустить backend снова —
+#    админ пересоздастся при старте.
+```
+
+## Деплой на сервере (Docker + nginx)
+
+На зарубежном сервере с публичным доменом (`telegram.crossmark.ru`).
+
+### 1. Запустить стек
+
+```bash
+git clone <repo> telegram-proxy && cd telegram-proxy
+cp .env.example .env
+```
+
+Заполните `.env` для прода:
+```ini
+NODE_ENV=production
+PUBLIC_BASE_URL=https://telegram.crossmark.ru   # https обязателен для вебхуков Telegram
+DB_PASSWORD=<надёжный-пароль>
+JWT_SECRET=<openssl rand -hex 32>
+ADMIN_EMAIL=<ваш-email>
+ADMIN_PASSWORD=<надёжный-пароль>
+COOKIE_SECURE=true                              # админка отдаётся по HTTPS
+FRONTEND_PORT=8080
+```
+
+```bash
+docker compose up -d --build
+```
+
+Backend слушает `127.0.0.1:3000`, админка — `127.0.0.1:8080` (порты на хосте; наружу
+их закрывает фаервол, публичный трафик идёт только через nginx).
+
+### 2. nginx + TLS
+
+Готовый пример: [deploy/nginx.conf.example](deploy/nginx.conf.example). Он
+терминирует TLS и маршрутизирует:
+
+- `/bot<token>/…`, `/file/bot<token>/…` → backend (прокси Bot API, стриминг больших тел)
+- `/webhook/…` → backend (входящие вебхуки)
+- `/api/…`, `/auth`, `/docs`, `/health` → backend (админ-API и Swagger)
+- всё остальное (`/`, `/login`, `/bots`, `/_next/…`) → frontend (админка)
+
+```bash
+sudo cp deploy/nginx.conf.example /etc/nginx/sites-available/telegram-proxy
+sudo ln -s /etc/nginx/sites-available/telegram-proxy /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d telegram.crossmark.ru     # выпустить сертификат
+```
+
+> `client_max_body_size` в конфиге должен быть **≥ `MAX_UPLOAD_MB`** (по умолчанию
+> 60m ≥ 50), иначе крупные `sendPhoto`/`sendDocument` будут обрезаться.
+> При HTTPS обязательно `COOKIE_SECURE=true`, иначе браузер не сохранит cookie входа.
+
+### 3. Обновление
+
+```bash
+git pull
+docker compose up -d --build
+```
 
 ## Переменные окружения
 
@@ -81,26 +271,26 @@ bun run dev                   # :3001
 | Переменная | Назначение |
 |---|---|
 | `PUBLIC_BASE_URL` | Публичный origin (например `https://telegram.crossmark.ru`). Из него строятся URL вебхуков. |
-| `DB_*` | Подключение к PostgreSQL. `DB_SYNCHRONIZE=true` авто-создаёт таблицы (для прод — переключите на миграции). |
+| `DB_*` | Подключение к PostgreSQL. `DB_SYNCHRONIZE=true` авто-создаёт таблицы (для прода — миграции). |
+| `REDIS_URL` | Полный URL Redis (`redis://host:port/db`). Если задан — `REDIS_HOST/PORT/PASSWORD/DB` игнорируются. |
+| `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` / `REDIS_DB` | Подключение к Redis (если не задан `REDIS_URL`). |
+| `REDIS_KEY_PREFIX` | Префикс всех ключей сервиса в Redis (по умолчанию `tgproxy:`). |
+| `REDIS_TOKEN_CACHE_TTL` | TTL (сек) кэша «токен зарегистрирован?» для гарда прокси (по умолчанию 30). |
 | `JWT_SECRET` | Секрет подписи JWT (≥16 символов). |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Первый админ, создаётся при пустой таблице users. |
+| `JWT_EXPIRES_IN` | Срок жизни токена (`7d`, `12h`, …). |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Первый админ, создаётся при пустой таблице `users`. |
 | `PROXY_ALLOW_UNREGISTERED` | `false` — проксировать Bot API только для зарегистрированных токенов (защита от открытого прокси). |
+| `PROXY_TIMEOUT_MS` | Таймаут запросов прозрачного прокси к Telegram. |
+| `WEBHOOK_FORWARD_TIMEOUT_MS` | Таймаут пересылки входящего вебхука на бэкенд бота. |
 | `MAX_UPLOAD_MB` | Лимит размера тела запроса прокси (загрузка файлов). |
-| `FRONTEND_PORT` | Хост-порт веб-админки (по умолчанию `8080`). |
+| `FRONTEND_PORT` | Хост-порт веб-админки в docker-compose (по умолчанию `8080`). |
 | `COOKIE_SECURE` | `true` — только когда админка отдаётся по HTTPS (иначе cookie не сохранится по HTTP). |
+
+> Redis **не обязателен для запуска**: если он недоступен, гард прокси прозрачно
+> деградирует к запросу в БД (источник истины), сервис продолжает работать.
 
 Переменные фронтенда — в [frontend/.env.example](frontend/.env.example): `API_URL`
 (адрес backend, который видит только сервер Next.js), `PORT`, `COOKIE_SECURE`.
-
-## Админка (веб-интерфейс)
-
-Next.js-приложение в [frontend/](frontend/). Возможности: вход по JWT, список ботов,
-создание/редактирование/удаление бота, переустановка вебхука, живой `getWebhookInfo`
-из Telegram и журнал доставок вебхуков.
-
-Архитектура — **BFF**: формы вызывают Server Actions, те ходят в backend с токеном из
-`httpOnly`-cookie и сами рендерят страницы. Браузер никогда не держит JWT и не обращается
-к backend напрямую — поэтому нужен только один публичный порт и не нужен CORS.
 
 ## Админ-API
 
@@ -151,8 +341,9 @@ Next.js-приложение в [frontend/](frontend/). Возможности: 
   `targetWebhookUrl` бота, добавляя тот же заголовок — бэкенд может проверять его
   ровно так же, как если бы Telegram звонил напрямую.
 - Ответ бэкенда **прозрачно возвращается** Telegram — поэтому работает приём
-  «ответ методом в теле ответа на вебхук». Ошибки/таймауты бэкенда логируются, а
-  Telegram получает `200`, чтобы не было шторма ретраев.
+  «ответ методом в теле ответа на вебхук». Ошибки/таймауты бэкенда логируются (в
+  таблицу `delivery_log`), а Telegram получает `200`, чтобы не было шторма ретраев
+  (4xx сохраняется, 5xx превращается в 200).
 
 ### Исходящий Bot API (drop-in замена хоста)
 
@@ -167,7 +358,8 @@ https://telegram.crossmark.ru/file/bot<token>/<file_path>   # скачивани
 Проксируются **все** методы и любой `content-type`, включая
 `multipart/form-data` (загрузка фото/документов). По умолчанию проксируются
 только токены ботов, зарегистрированных в админке
-(`PROXY_ALLOW_UNREGISTERED=false`).
+(`PROXY_ALLOW_UNREGISTERED=false`). Проверка регистрации токена кэшируется в Redis
+на `REDIS_TOKEN_CACHE_TTL` секунд (при недоступности Redis — запрос в БД).
 
 ## Безопасность
 
@@ -175,7 +367,8 @@ https://telegram.crossmark.ru/file/bot<token>/<file_path>   # скачивани
   держите БД в приватной сети, ограничьте доступ.
 - Смените `JWT_SECRET` и `ADMIN_PASSWORD` перед продом.
 - Терминируйте TLS на reverse-proxy (nginx/Caddy/Traefik) перед сервисом;
-  Telegram требует HTTPS для вебхуков.
+  Telegram требует HTTPS для вебхуков. См. [deploy/nginx.conf.example](deploy/nginx.conf.example).
+- Не пробрасывайте порты Postgres/Redis наружу; публичный трафик — только через nginx.
 
 ## Прод-замечание про БД
 

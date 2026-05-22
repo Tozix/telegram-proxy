@@ -29,6 +29,18 @@ export interface AppConfig {
     /** Upstream Telegram API origin (proxied to). */
     apiBase: string;
   };
+  redis: {
+    /** Full connection URL (redis://...). When set, host/port/password/db are ignored. */
+    url: string | undefined;
+    host: string;
+    port: number;
+    password: string;
+    db: number;
+    /** Prefix prepended to every key this service writes. */
+    keyPrefix: string;
+    /** TTL (seconds) for the "is this token registered?" proxy guard cache. */
+    tokenCacheTtlSeconds: number;
+  };
   proxy: {
     /** Allow proxying Bot API calls for tokens that are not registered in the admin. */
     allowUnregistered: boolean;
@@ -75,6 +87,15 @@ export default (): AppConfig => ({
   },
   telegram: {
     apiBase: (process.env.TELEGRAM_API_BASE ?? 'https://api.telegram.org').replace(/\/+$/, ''),
+  },
+  redis: {
+    url: process.env.REDIS_URL || undefined,
+    host: process.env.REDIS_HOST ?? 'localhost',
+    port: toInt(process.env.REDIS_PORT, 6379),
+    password: process.env.REDIS_PASSWORD ?? '',
+    db: toInt(process.env.REDIS_DB, 0),
+    keyPrefix: process.env.REDIS_KEY_PREFIX ?? 'tgproxy:',
+    tokenCacheTtlSeconds: toInt(process.env.REDIS_TOKEN_CACHE_TTL, 30),
   },
   proxy: {
     allowUnregistered: toBool(process.env.PROXY_ALLOW_UNREGISTERED, false),

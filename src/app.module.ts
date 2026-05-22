@@ -7,6 +7,7 @@ import configuration from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { HealthController } from './health.controller';
 import { ProxyModule } from './proxy/proxy.module';
+import { RedisModule } from './redis/redis.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { UsersModule } from './users/users.module';
 
@@ -33,6 +34,7 @@ import { UsersModule } from './users/users.module';
         ssl: config.get<boolean>('database.ssl') ? { rejectUnauthorized: false } : false,
       }),
     }),
+    RedisModule,
     UsersModule,
     AuthModule,
     TelegramModule,

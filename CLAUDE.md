@@ -43,10 +43,11 @@ Notes:
 - **No test suite** exists (no test runner configured).
 - The `lint`/`format` scripts in [package.json](package.json) reference ESLint/Prettier, but neither is installed or configured — they will fail. **`bun run typecheck` is the only working check.** Run it (in both root and `frontend/`) after changes.
 - The Dockerfile runs `bun run src/main.ts` directly; `nest build` is not part of the runtime path.
+- On a running backend: Swagger UI is at `/docs` (admin API only; the proxy/webhook surfaces are excluded), and a public liveness probe is at `GET /health` ([src/health.controller.ts](src/health.controller.ts)).
 
 ## Backend architecture
 
-NestJS 11 + TypeORM (PostgreSQL). Modules: `users`, `auth`, `telegram`, `bots`, `proxy` ([src/app.module.ts](src/app.module.ts)).
+NestJS 11 + TypeORM (PostgreSQL) + Redis (ioredis). Modules: `redis`, `users`, `auth`, `telegram`, `bots`, `proxy` ([src/app.module.ts](src/app.module.ts)).
 
 ### The proxy bypasses NestJS (critical)
 
@@ -62,7 +63,7 @@ The inbound webhook (`POST /webhook/:secret`) **is** a normal controller ([Webho
 
 ### Bot lifecycle
 
-[BotsService](src/bots/bots.service.ts) owns webhook registration: creating/updating a bot validates the token via `getMe` and calls Telegram `setWebhook` with `url = {PUBLIC_BASE_URL}/webhook/<secret>`. [TelegramService](src/telegram/telegram.service.ts) is a thin typed client used *only* for these self-initiated calls (getMe/setWebhook/deleteWebhook/getWebhookInfo) — all other Bot API traffic goes through the transparent proxy and never touches it. `BotsService` keeps a 30s in-memory cache of "is this token registered?" (used by the proxy's open-relay guard); it is cleared on every write.
+[BotsService](src/bots/bots.service.ts) owns webhook registration: creating/updating a bot validates the token via `getMe` and calls Telegram `setWebhook` with `url = {PUBLIC_BASE_URL}/webhook/<secret>`. [TelegramService](src/telegram/telegram.service.ts) is a thin typed client used *only* for these self-initiated calls (getMe/setWebhook/deleteWebhook/getWebhookInfo) — all other Bot API traffic goes through the transparent proxy and never touches it. `BotsService` caches "is this token registered?" in Redis (TTL `REDIS_TOKEN_CACHE_TTL`, default 30s; used by the proxy's open-relay guard, which rejects unknown tokens with 403 unless `PROXY_ALLOW_UNREGISTERED=true`); the cache is flushed on every write. The DB is the source of truth — if Redis is down, [RedisService](src/redis/redis.service.ts) helpers swallow the error and the guard falls back to a DB count, so the proxy keeps working.
 
 ### Conventions
 
@@ -70,6 +71,7 @@ The inbound webhook (`POST /webhook/:secret`) **is** a normal controller ([Webho
 - **Serialization**: a global `ClassSerializerInterceptor` applies class-transformer rules to every response. Controllers return DTOs built with static `Dto.from(entity)` factories (e.g. `BotResponseDto.from`), not raw entities — `webhookSecret`/`token` must not leak.
 - **Validation**: global `ValidationPipe` with `whitelist + forbidNonWhitelisted + transform`; request bodies are class-validator DTOs.
 - **Auth**: JWT (email+password). Admin controllers opt in with `@UseGuards(JwtAuthGuard)` per-controller; there is no global guard, which is why the webhook/proxy surfaces stay open.
+- **Redis**: a global `RedisModule` exposes [RedisService](src/redis/redis.service.ts) (ioredis), used as a **cache only** — its `get/set/del/delByPattern/incrWithTtl` helpers never throw, so Redis being down degrades to a DB hit rather than an error. The client fails fast (`enableOfflineQueue:false`, `maxRetriesPerRequest:1`). Keys are namespaced via `redis.key(...)` with `REDIS_KEY_PREFIX` (we do **not** use ioredis' `keyPrefix` option, which breaks SCAN).
 
 ## Frontend architecture (BFF)
 

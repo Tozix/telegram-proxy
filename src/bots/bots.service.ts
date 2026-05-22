@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'node:crypto';
 import { Repository } from 'typeorm';
+import { RedisService } from '../redis/redis.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { Bot } from './bot.entity';
 import { BotResponseDto } from './dto/bot-response.dto';
@@ -15,24 +16,20 @@ import { CreateBotDto } from './dto/create-bot.dto';
 import { UpdateBotDto } from './dto/update-bot.dto';
 import { WebhookInfoDto } from './dto/webhook-info.dto';
 
-interface CachedToken {
-  exists: boolean;
-  expiresAt: number;
-}
-
 @Injectable()
 export class BotsService {
   private readonly logger = new Logger(BotsService.name);
   private readonly publicBaseUrl: string;
-  private readonly tokenCache = new Map<string, CachedToken>();
-  private readonly tokenCacheTtlMs = 30_000;
+  private readonly tokenCacheTtlSeconds: number;
 
   constructor(
     @InjectRepository(Bot) private readonly bots: Repository<Bot>,
     private readonly telegram: TelegramService,
+    private readonly redis: RedisService,
     config: ConfigService,
   ) {
     this.publicBaseUrl = config.get<string>('publicBaseUrl')!;
+    this.tokenCacheTtlSeconds = config.get<number>('redis.tokenCacheTtlSeconds')!;
   }
 
   // ----- public API (returns DTOs) -----
@@ -57,7 +54,7 @@ export class BotsService {
       isActive: true,
     });
     await this.bots.save(bot);
-    this.invalidateTokenCache();
+    await this.invalidateTokenCache();
 
     await this.registerWebhook(bot, dto.dropPendingUpdates ?? false);
     return this.toDto(bot);
@@ -97,7 +94,7 @@ export class BotsService {
     if (dto.isActive !== undefined) bot.isActive = dto.isActive;
 
     await this.bots.save(bot);
-    this.invalidateTokenCache();
+    await this.invalidateTokenCache();
 
     if (dto.isActive === false) {
       await this.safeDeleteWebhook(bot);
@@ -112,7 +109,7 @@ export class BotsService {
     const bot = await this.getEntity(id);
     await this.safeDeleteWebhook(bot, dropPendingUpdates);
     await this.bots.remove(bot);
-    this.invalidateTokenCache();
+    await this.invalidateTokenCache();
   }
 
   async refreshWebhook(id: string, dropPendingUpdates = false): Promise<BotResponseDto> {
@@ -138,14 +135,19 @@ export class BotsService {
     return this.bots.findOne({ where: { webhookSecret: secret } });
   }
 
+  /**
+   * Used by the transparent proxy's open-relay guard on every Bot API request,
+   * so it must be cheap. Answers from a short-lived Redis cache (shared across
+   * instances, survives restarts); on a miss or if Redis is down it falls back
+   * to a DB count, which is always authoritative.
+   */
   async isRegisteredToken(token: string): Promise<boolean> {
-    const cached = this.tokenCache.get(token);
-    const now = Date.now();
-    if (cached && cached.expiresAt > now) return cached.exists;
+    const cacheKey = this.redis.key('reg', token);
+    const cached = await this.redis.get(cacheKey);
+    if (cached !== null) return cached === '1';
 
-    const count = await this.bots.count({ where: { token } });
-    const exists = count > 0;
-    this.tokenCache.set(token, { exists, expiresAt: now + this.tokenCacheTtlMs });
+    const exists = (await this.bots.count({ where: { token } })) > 0;
+    await this.redis.set(cacheKey, exists ? '1' : '0', this.tokenCacheTtlSeconds);
     return exists;
   }
 
@@ -188,7 +190,7 @@ export class BotsService {
     return randomBytes(24).toString('hex');
   }
 
-  private invalidateTokenCache(): void {
-    this.tokenCache.clear();
+  private async invalidateTokenCache(): Promise<void> {
+    await this.redis.delByPattern(this.redis.key('reg', '*'));
   }
 }
