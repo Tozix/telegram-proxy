@@ -1,7 +1,7 @@
 {
   "name": "telegram-proxy",
   "version": "1.0.0",
-  "description": "Transparent proxy for Telegram Bot webhooks and Bot API (telegram.crossmark.ru)",
+  "description": "Self-hosted transparent proxy for Telegram Bot webhooks and Bot API",
   "private": true,
   "type": "commonjs",
   "scripts": {
@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "db:push": "prisma db push && prisma generate",
+    "create-admin": "bun run scripts/create-admin.ts",
     "postinstall": "prisma generate",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "eslint \"src/**/*.ts\" --fix"

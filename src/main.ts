@@ -62,7 +62,7 @@ async function bootstrap(): Promise<void> {
     .setTitle('Telegram Proxy API')
     .setDescription(
       [
-        'Админ-API прокси вебхуков и Bot API для Telegram, размещённого на **telegram.crossmark.ru**.',
+        'Админ-API прокси вебхуков и Bot API для Telegram, размещённого на **proxy.example.com**.',
         '',
         '### Авторизация',
         'Вызовите `POST /auth/login`, чтобы получить JWT, затем нажмите **Authorize** и вставьте токен.',

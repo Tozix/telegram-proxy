@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 
 export class CreateBotDto {
-  @ApiProperty({ example: 'CrossmarkSupportBot', description: 'Понятное имя для отображения в админке.' })
+  @ApiProperty({ example: 'MySupportBot', description: 'Понятное имя для отображения в админке.' })
   @IsString()
   @IsNotEmpty()
   name!: string;
@@ -24,7 +24,7 @@ export class CreateBotDto {
   token!: string;
 
   @ApiProperty({
-    example: 'https://my-backend.ru/telegram/webhook',
+    example: 'https://your-backend.example.com/telegram/webhook',
     description: 'URL реального бэкенда, на который пересылаются апдейты.',
   })
   @IsUrl({ require_protocol: true, require_tld: false })

@@ -17,7 +17,7 @@ export class DeliveryLogResponseDto {
   updateId!: string | null;
 
   @Expose()
-  @ApiProperty({ example: 'https://my-backend.ru/telegram/webhook' })
+  @ApiProperty({ example: 'https://your-backend.example.com/telegram/webhook' })
   targetUrl!: string;
 
   @Expose()

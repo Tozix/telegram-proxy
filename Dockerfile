@@ -19,6 +19,7 @@ COPY --from=deps /app/generated ./generated
 COPY package.json tsconfig.json prisma.config.ts ./
 COPY prisma ./prisma
 COPY src ./src
+COPY scripts ./scripts
 
 USER bun
 EXPOSE 3000

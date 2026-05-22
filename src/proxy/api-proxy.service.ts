@@ -19,7 +19,7 @@ const HOP_BY_HOP = new Set([
 
 /**
  * Transparent reverse proxy for the Telegram Bot API. Mounted on `/bot*` and
- * `/file*` so that pointing a bot backend at https://telegram.crossmark.ru
+ * `/file*` so that pointing a bot backend at https://proxy.example.com
  * instead of https://api.telegram.org "just works" for every method, including
  * multipart file uploads and file downloads.
  */

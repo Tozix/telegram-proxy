@@ -2,12 +2,22 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const TOKEN_COOKIE = 'tp_token';
 
+// Public pages reachable without a session.
+const PUBLIC_PATHS = new Set(['/', '/guide', '/login']);
+
 export function middleware(req: NextRequest) {
   const token = req.cookies.get(TOKEN_COOKIE)?.value;
   const { pathname } = req.nextUrl;
 
-  // Unauthenticated users may only see the login page.
-  if (!token && pathname !== '/login') {
+  // Already signed in → skip the login page, go to the admin.
+  if (token && pathname === '/login') {
+    const url = req.nextUrl.clone();
+    url.pathname = '/bots';
+    return NextResponse.redirect(url);
+  }
+
+  // Unauthenticated users may only see public pages.
+  if (!token && !PUBLIC_PATHS.has(pathname)) {
     const url = req.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A transparent proxy for Telegram bots (deployed at `telegram.crossmark.ru`) that works around Telegram being blocked in Russia. It has two passthrough surfaces and an admin layer:
+A transparent proxy for Telegram bots (deployed at `proxy.example.com`) that works around Telegram being blocked in Russia. It has two passthrough surfaces and an admin layer:
 
 - **Inbound webhooks** — Telegram posts updates to `POST /webhook/<secret>`; we forward them verbatim to each bot's real backend (`targetWebhookUrl`).
 - **Outbound Bot API** — a drop-in replacement for `api.telegram.org`. Point a bot backend at this host (`/bot<token>/<method>`, `/file/bot<token>/<path>`) and every method is proxied verbatim, including multipart uploads.
@@ -85,13 +85,18 @@ The inbound webhook (`POST /webhook/:secret`) **is** a normal controller ([Webho
 
 ## Frontend architecture (BFF)
 
-Next.js 15 App Router + Tailwind v4, `output: 'standalone'`. The browser **never** sees the JWT or talks to the backend directly:
+Next.js 15 App Router + Tailwind v4 (IBM Plex Sans/Mono via `next/font`), `output: 'standalone'`. The browser **never** sees the JWT or talks to the backend directly:
 
+- **Route groups**: `(marketing)` = public pages — landing `/` and docs `/guide` (dark, `src/lib/site.ts` + `src/lib/examples.ts`, code via `CodeBlock`/`CodeTabs`); `(app)` = the authed admin shell (`/bots`, …). `/login` uses the minimal root layout. Only the root layout renders `<html>/<body>`; group layouts render their own chrome.
+- [frontend/src/middleware.ts](frontend/src/middleware.ts): public paths are `/`, `/guide`, `/login` (see `PUBLIC_PATHS`); everything else without a token bounces to `/login`. Keep this set in sync when adding public pages.
 - JWT lives in an `httpOnly` cookie (`tp_token`, [frontend/src/lib/session.ts](frontend/src/lib/session.ts)).
 - All mutations go through **Server Actions** ([frontend/src/app/actions.ts](frontend/src/app/actions.ts)); pages fetch server-side via [frontend/src/lib/api.ts](frontend/src/lib/api.ts), which attaches the cookie token and bounces to `/login` on 401.
-- `API_URL` (backend address) is a **server-only** env var — the browser only ever hits the Next.js server, so there's no CORS and one public port suffices.
-- [frontend/src/middleware.ts](frontend/src/middleware.ts) redirects unauthenticated requests to `/login`.
+- `API_URL` is **server-only**; browser-visible config uses `NEXT_PUBLIC_*` (`PROXY_HOST`, `SWAGGER_URL`, `GITHUB_URL` in `src/lib/site.ts`) so the docs show the deployer's domain. No real domain is hard-coded — examples use `proxy.example.com`.
 - `COOKIE_SECURE=true` only when served over HTTPS, or the browser silently drops the login cookie over plain HTTP.
+
+## Admin users
+
+The first admin is auto-seeded on boot from `ADMIN_EMAIL`/`ADMIN_PASSWORD` when the `users` table is empty ([UsersService.ensureAdmin](src/users/users.service.ts)). To add more admins or reset a password, run the idempotent CLI: `bun run create-admin <email> <password>` ([scripts/create-admin.ts](scripts/create-admin.ts), upserts by email; needs `DATABASE_URL`).
 
 ## Production note
 

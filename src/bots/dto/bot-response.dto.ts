@@ -13,11 +13,11 @@ export class BotResponseDto {
   id!: string;
 
   @Expose()
-  @ApiProperty({ example: 'Crossmark Support Bot' })
+  @ApiProperty({ example: 'My Support Bot' })
   name!: string;
 
   @Expose()
-  @ApiPropertyOptional({ nullable: true, example: 'crossmark_support_bot', description: '@-username из getMe' })
+  @ApiPropertyOptional({ nullable: true, example: 'my_support_bot', description: '@-username из getMe' })
   username!: string | null;
 
   @Expose()
@@ -30,13 +30,13 @@ export class BotResponseDto {
 
   @Expose()
   @ApiProperty({
-    example: 'https://telegram.crossmark.ru/webhook/2f1c…',
+    example: 'https://proxy.example.com/webhook/2f1c…',
     description: 'URL вебхука, зарегистрированный в Telegram для этого бота',
   })
   webhookUrl!: string;
 
   @Expose()
-  @ApiProperty({ example: 'https://my-backend.ru/telegram/webhook', description: 'Бэкенд, на который пересылаются апдейты' })
+  @ApiProperty({ example: 'https://your-backend.example.com/telegram/webhook', description: 'Бэкенд, на который пересылаются апдейты' })
   targetWebhookUrl!: string;
 
   @Expose()

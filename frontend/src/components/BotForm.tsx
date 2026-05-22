@@ -55,7 +55,7 @@ export function BotForm({ mode, action, bot }: { mode: 'create' | 'edit'; action
           type="url"
           required
           defaultValue={bot?.targetWebhookUrl}
-          placeholder="https://my-backend.ru/telegram/webhook"
+          placeholder="https://your-backend.example.com/telegram/webhook"
           className={inputClass}
         />
       </Field>

@@ -5,7 +5,7 @@
 export interface AppConfig {
   nodeEnv: string;
   port: number;
-  /** Public origin under which Telegram reaches this service, e.g. https://telegram.crossmark.ru */
+  /** Public origin under which Telegram reaches this service, e.g. https://proxy.example.com */
   publicBaseUrl: string;
   database: {
     /** Prisma connection string, e.g. postgresql://user:pass@host:5432/db?schema=public */
@@ -64,7 +64,7 @@ const toInt = (value: string | undefined, fallback: number): number => {
 export default (): AppConfig => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: toInt(process.env.PORT, 3000),
-  publicBaseUrl: (process.env.PUBLIC_BASE_URL ?? 'https://telegram.crossmark.ru').replace(/\/+$/, ''),
+  publicBaseUrl: (process.env.PUBLIC_BASE_URL ?? 'https://proxy.example.com').replace(/\/+$/, ''),
   database: {
     url:
       process.env.DATABASE_URL ??

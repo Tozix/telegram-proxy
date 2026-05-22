@@ -8,7 +8,7 @@ import { WebhookInfo } from '../../telegram/telegram.service';
  */
 export class WebhookInfoDto {
   @Expose()
-  @ApiProperty({ example: 'https://telegram.crossmark.ru/webhook/2f1c…' })
+  @ApiProperty({ example: 'https://proxy.example.com/webhook/2f1c…' })
   url!: string;
 
   @Expose()
