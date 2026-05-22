@@ -24,7 +24,7 @@ export class DeliveryLogsController {
   @Get(':id/logs')
   @ApiOperation({
     summary: 'Журнал доставок вебхуков',
-    description: 'Постраничный список попыток доставки (Telegram → прокси → бэкенд) для бота, новые сверху.',
+    description: 'Список попыток доставки (Telegram → прокси → бэкенд) для бота (limit/offset), новые сверху.',
   })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOkResponse({ type: PaginatedDeliveryLogsDto })
@@ -32,6 +32,6 @@ export class DeliveryLogsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: PaginationQueryDto,
   ): Promise<PaginatedDeliveryLogsDto> {
-    return this.logs.findByBot(id, query.page, query.limit);
+    return this.logs.findByBot(id, query.limit, query.offset);
   }
 }

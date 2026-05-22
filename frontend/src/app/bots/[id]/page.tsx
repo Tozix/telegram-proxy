@@ -37,10 +37,12 @@ export default async function BotDetailPage({
 }) {
   const { id } = await params;
   const logsPage = Math.max(1, Number((await searchParams).logsPage) || 1);
+  const logsOffset = (logsPage - 1) * LOGS_PAGE_SIZE;
   const bot = await api.get<Bot>(`/api/bots/${id}`);
   const logs = await api.get<Paginated<DeliveryLog>>(
-    `/api/bots/${id}/logs?page=${logsPage}&limit=${LOGS_PAGE_SIZE}`,
+    `/api/bots/${id}/logs?limit=${LOGS_PAGE_SIZE}&offset=${logsOffset}`,
   );
+  const logsTotalPages = Math.max(1, Math.ceil(logs.total / LOGS_PAGE_SIZE));
 
   let webhookInfo: WebhookInfo | null = null;
   let webhookInfoError: string | null = null;
@@ -150,8 +152,8 @@ export default async function BotDetailPage({
             </table>
             <div className="px-4 pb-4">
               <Pagination
-                page={logs.page}
-                totalPages={logs.totalPages}
+                page={logsPage}
+                totalPages={logsTotalPages}
                 hrefFor={(p) => `/bots/${id}?logsPage=${p}`}
               />
             </div>

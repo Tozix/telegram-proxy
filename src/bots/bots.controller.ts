@@ -63,10 +63,10 @@ export class BotsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Список ботов', description: 'Постраничный список ботов, новые сверху.' })
+  @ApiOperation({ summary: 'Список ботов', description: 'Список ботов (limit/offset), новые сверху.' })
   @ApiOkResponse({ type: PaginatedBotsDto })
   findAll(@Query() query: PaginationQueryDto): Promise<PaginatedBotsDto> {
-    return this.bots.findAll(query.page, query.limit);
+    return this.bots.findAll(query.limit, query.offset);
   }
 
   @Get(':id')

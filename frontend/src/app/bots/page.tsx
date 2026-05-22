@@ -22,8 +22,10 @@ export default async function BotsPage({
 }) {
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page) || 1);
-  const data = await api.get<Paginated<Bot>>(`/api/bots?page=${page}&limit=${PAGE_SIZE}`);
+  const offset = (page - 1) * PAGE_SIZE;
+  const data = await api.get<Paginated<Bot>>(`/api/bots?limit=${PAGE_SIZE}&offset=${offset}`);
   const bots = data.items;
+  const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
 
   return (
     <div>
@@ -79,8 +81,8 @@ export default async function BotsPage({
       )}
 
       <Pagination
-        page={data.page}
-        totalPages={data.totalPages}
+        page={page}
+        totalPages={totalPages}
         total={data.total}
         hrefFor={(p) => `/bots?page=${p}`}
       />

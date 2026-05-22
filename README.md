@@ -326,18 +326,18 @@ docker compose up -d --build
 | `POST` | `/auth/login` | Логин, выдаёт JWT |
 | `GET` | `/auth/me` | Текущий пользователь |
 | `POST` | `/api/bots` | Создать бота + setWebhook |
-| `GET` | `/api/bots` | Список ботов (постранично) |
+| `GET` | `/api/bots` | Список ботов (limit/offset) |
 | `GET` | `/api/bots/:id` | Бот по id |
 | `PATCH` | `/api/bots/:id` | Изменить (при смене URL/токена — переустанавливает вебхук) |
 | `DELETE` | `/api/bots/:id` | Удалить бота + deleteWebhook |
 | `POST` | `/api/bots/:id/refresh-webhook` | Переустановить вебхук |
 | `GET` | `/api/bots/:id/webhook-info` | Живой `getWebhookInfo` из Telegram |
-| `GET` | `/api/bots/:id/logs` | Журнал доставок вебхуков (постранично) |
+| `GET` | `/api/bots/:id/logs` | Журнал доставок вебхуков (limit/offset) |
 | `GET` | `/health` | Liveness-проба |
 
-Списочные методы (`/api/bots`, `/api/bots/:id/logs`) поддерживают постраничную
-навигацию: query-параметры `?page=1&limit=20` (limit 1–100). Ответ:
-`{ "items": [...], "total", "page", "limit", "totalPages" }`.
+Списочные методы (`/api/bots`, `/api/bots/:id/logs`) принимают `?limit=20&offset=0`
+(limit 1–100, offset ≥ 0). Ответ: `{ "total", "limit", "offset", "items": [...] }`,
+где `total` — общее число записей.
 
 ## Как работает проксирование
 

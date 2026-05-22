@@ -63,16 +63,16 @@ export class BotsService {
     return this.toDto(bot);
   }
 
-  async findAll(page: number, limit: number): Promise<PaginatedBotsDto> {
+  async findAll(limit: number, offset: number): Promise<PaginatedBotsDto> {
     const [bots, total] = await this.prisma.$transaction([
       this.prisma.bot.findMany({
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
+        skip: offset,
         take: limit,
       }),
       this.prisma.bot.count(),
     ]);
-    return { items: bots.map((b) => this.toDto(b)), ...buildMeta(total, page, limit) };
+    return { ...buildMeta(total, limit, offset), items: bots.map((b) => this.toDto(b)) };
   }
 
   async findOne(id: string): Promise<BotResponseDto> {
