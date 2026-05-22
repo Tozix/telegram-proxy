@@ -10,8 +10,8 @@ function StatCard({ label, value, sub }: { label: string; value: number; sub?: s
   return (
     <div className={`${card} p-5`}>
       <div className="text-sm text-slate-400">{label}</div>
-      <div className="mt-1 text-3xl font-bold text-white">{value.toLocaleString('ru-RU')}</div>
-      {sub && <div className="mt-1 text-xs text-slate-500">{sub}</div>}
+      <div className="mt-1 text-3xl font-bold tabular-nums text-ink">{value.toLocaleString('ru-RU')}</div>
+      {sub && <div className="mt-1 text-xs text-slate-400">{sub}</div>}
     </div>
   );
 }
@@ -27,7 +27,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-white">Дашборд</h1>
+      <h1 className="text-2xl font-bold text-ink">Дашборд</h1>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard

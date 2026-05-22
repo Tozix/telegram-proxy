@@ -4,8 +4,14 @@
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
 
-  /* Telegram-cyan accent used across the marketing pages. */
+  /* Surfaces — tinted dark neutrals (OKLCH), never pure black. */
+  --color-bg: oklch(0.17 0.018 250); /* page background (≈ #0a0e14) */
+  --color-surface: oklch(0.21 0.022 250); /* panels / code cards (≈ #0d1320) */
+  --color-ink: oklch(0.98 0.006 240); /* primary text — replaces pure #fff */
+
+  /* Telegram-cyan accent. Kept as brand-exact hex for colour fidelity. */
   --color-tg-50: #eaf7fe;
+  --color-tg-200: #b6e3fb;
   --color-tg-300: #7fd0f5;
   --color-tg-400: #38b6f1;
   --color-tg-500: #2aabee;
@@ -39,5 +45,8 @@ html {
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up {
     animation: none;
+  }
+  html {
+    scroll-behavior: auto;
   }
 }

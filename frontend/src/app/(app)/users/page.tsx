@@ -4,7 +4,7 @@ import { Pagination } from '@/components/Pagination';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import type { AdminUser, AuthUser, Paginated } from '@/lib/types';
-import { btnPrimary, rowHover, td, th } from '@/lib/ui';
+import { btnPrimary, rowHover, tableWrap, td, th } from '@/lib/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,16 +36,16 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">
-          Пользователи {data.total > 0 && <span className="text-sm font-normal text-slate-500">({data.total})</span>}
+        <h1 className="text-2xl font-bold text-ink">
+          Пользователи {data.total > 0 && <span className="text-sm font-normal text-slate-400">({data.total})</span>}
         </h1>
         <Link href="/users/new" className={btnPrimary}>
           Добавить администратора
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-white/10">
-        <table className="w-full">
+      <div className={tableWrap}>
+        <table className="w-full min-w-[720px]">
           <thead className="bg-white/[0.03]">
             <tr>
               <th className={th}>Email</th>
@@ -62,7 +62,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
               const isLastAdmin = u.role === 'admin' && adminCount <= 1;
               return (
                 <tr key={u.id} className={rowHover}>
-                  <td className={`${td} font-medium text-white`}>
+                  <td className={`${td} font-medium text-ink`}>
                     {u.email}
                     {isSelf && (
                       <span className="ml-2 rounded bg-white/10 px-1.5 py-0.5 text-xs font-normal text-slate-400">вы</span>

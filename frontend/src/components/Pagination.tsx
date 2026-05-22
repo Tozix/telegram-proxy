@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { focusRing } from '@/lib/ui';
 
 function pageWindow(page: number, total: number, span = 2): number[] {
   const start = Math.max(1, page - span);
@@ -8,10 +9,10 @@ function pageWindow(page: number, total: number, span = 2): number[] {
   return pages;
 }
 
-const base = 'inline-flex h-9 min-w-9 items-center justify-center rounded-md border px-3 text-sm';
-const idle = 'border-slate-300 text-slate-700 hover:bg-slate-50';
-const active = 'border-indigo-600 bg-indigo-600 text-white';
-const off = 'border-slate-200 text-slate-300 cursor-not-allowed';
+const base = `inline-flex h-11 min-w-11 items-center justify-center rounded-lg border px-3 text-sm transition ${focusRing}`;
+const idle = 'border-white/10 text-slate-300 hover:border-white/25 hover:bg-white/5';
+const active = 'border-tg-500 bg-tg-500 font-semibold text-[#06243a]';
+const off = 'border-white/5 text-slate-600 cursor-not-allowed';
 
 /**
  * Постраничная навигация. `hrefFor` строит URL для номера страницы, чтобы
@@ -41,15 +42,15 @@ export function Pagination({
   return (
     <nav className="mt-4 flex flex-wrap items-center justify-center gap-1.5" aria-label="Постраничная навигация">
       {page > 1 ? (
-        <Link href={hrefFor(page - 1)} className={`${base} ${idle}`}>← Назад</Link>
+        <Link href={hrefFor(page - 1)} rel="prev" className={`${base} ${idle}`}>← Назад</Link>
       ) : (
-        <span className={`${base} ${off}`}>← Назад</span>
+        <span aria-disabled className={`${base} ${off}`}>← Назад</span>
       )}
 
       {first > 1 && (
         <>
           <Link href={hrefFor(1)} className={`${base} ${idle}`}>1</Link>
-          {first > 2 && <span className="px-1 text-slate-400">…</span>}
+          {first > 2 && <span className="px-1 text-slate-500">…</span>}
         </>
       )}
 
@@ -63,15 +64,15 @@ export function Pagination({
 
       {last < totalPages && (
         <>
-          {last < totalPages - 1 && <span className="px-1 text-slate-400">…</span>}
+          {last < totalPages - 1 && <span className="px-1 text-slate-500">…</span>}
           <Link href={hrefFor(totalPages)} className={`${base} ${idle}`}>{totalPages}</Link>
         </>
       )}
 
       {page < totalPages ? (
-        <Link href={hrefFor(page + 1)} className={`${base} ${idle}`}>Вперёд →</Link>
+        <Link href={hrefFor(page + 1)} rel="next" className={`${base} ${idle}`}>Вперёд →</Link>
       ) : (
-        <span className={`${base} ${off}`}>Вперёд →</span>
+        <span aria-disabled className={`${base} ${off}`}>Вперёд →</span>
       )}
     </nav>
   );

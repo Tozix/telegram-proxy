@@ -3,7 +3,7 @@ import { Pagination } from '@/components/Pagination';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import type { Bot, Paginated } from '@/lib/types';
-import { btnPrimary, card, rowHover, td, th } from '@/lib/ui';
+import { btnPrimary, card, rowHover, tableWrap, td, th } from '@/lib/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,8 +25,8 @@ export default async function BotsPage({ searchParams }: { searchParams: Promise
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">
-          Боты {data.total > 0 && <span className="text-sm font-normal text-slate-500">({data.total})</span>}
+        <h1 className="text-2xl font-bold text-ink">
+          Боты {data.total > 0 && <span className="text-sm font-normal text-slate-400">({data.total})</span>}
         </h1>
         <Link href="/bots/new" className={btnPrimary}>
           Добавить бота
@@ -38,8 +38,8 @@ export default async function BotsPage({ searchParams }: { searchParams: Promise
           Пока нет ни одного бота. Нажмите «Добавить бота», чтобы зарегистрировать первого.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-white/10">
-          <table className="w-full">
+        <div className={tableWrap}>
+          <table className="w-full min-w-[680px]">
             <thead className="bg-white/[0.03]">
               <tr>
                 <th className={th}>Название</th>

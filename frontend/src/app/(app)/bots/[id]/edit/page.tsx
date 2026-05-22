@@ -14,10 +14,10 @@ export default async function EditBotPage({ params }: { params: Promise<{ id: st
   return (
     <div>
       <div className="mb-6">
-        <Link href={`/bots/${bot.id}`} className="text-sm text-slate-400 hover:text-white">
+        <Link href={`/bots/${bot.id}`} className="text-sm text-slate-400 hover:text-ink">
           ← К боту
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-white">Редактирование: {bot.name}</h1>
+        <h1 className="mt-2 text-2xl font-bold text-ink">Редактирование: {bot.name}</h1>
       </div>
       <div className={cardPad}>
         <BotForm mode="edit" action={updateBot} bot={bot} />

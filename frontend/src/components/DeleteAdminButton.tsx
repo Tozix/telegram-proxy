@@ -1,16 +1,22 @@
 'use client';
 
 import { deleteAdmin } from '@/app/actions';
-import { btnDanger } from '@/lib/ui';
+import { btnDanger, focusRing } from '@/lib/ui';
 import { SubmitButton } from './SubmitButton';
 
 /** Inline delete control for an admin row. Disabled (with a reason) for self / last admin. */
 export function DeleteAdminButton({ id, disabled, reason }: { id: string; disabled?: boolean; reason?: string }) {
   if (disabled) {
     return (
-      <span className="cursor-not-allowed text-sm text-slate-600" title={reason}>
+      <button
+        type="button"
+        aria-disabled="true"
+        title={reason}
+        aria-label={reason ? `Удалить недоступно: ${reason}` : 'Удалить недоступно'}
+        className={`cursor-not-allowed rounded text-sm text-slate-500 ${focusRing}`}
+      >
         Удалить
-      </span>
+      </button>
     );
   }
   return (

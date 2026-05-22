@@ -13,9 +13,9 @@ const LOGS_PAGE_SIZE = 20;
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-3 gap-4 px-4 py-3">
-      <dt className="text-sm text-slate-500">{label}</dt>
-      <dd className="col-span-2 break-all text-sm text-slate-200">{children}</dd>
+    <div className="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-3 sm:gap-4">
+      <dt className="text-sm text-slate-400">{label}</dt>
+      <dd className="break-all text-sm text-slate-200 sm:col-span-2">{children}</dd>
     </div>
   );
 }
@@ -23,7 +23,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className={card}>
-      <h2 className="border-b border-white/5 px-4 py-3 text-sm font-semibold text-white">{title}</h2>
+      <h2 className="border-b border-white/5 px-4 py-3 text-sm font-semibold text-ink">{title}</h2>
       {children}
     </section>
   );
@@ -57,11 +57,11 @@ export default async function BotDetailPage({
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <Link href="/bots" className="text-sm text-slate-400 hover:text-white">
+          <Link href="/bots" className="text-sm text-slate-400 hover:text-ink">
             ← К списку ботов
           </Link>
-          <h1 className="mt-2 text-2xl font-bold text-white">{bot.name}</h1>
-          {bot.username && <p className="text-sm text-slate-500">@{bot.username}</p>}
+          <h1 className="mt-2 text-2xl font-bold text-ink">{bot.name}</h1>
+          {bot.username && <p className="text-sm text-slate-400">@{bot.username}</p>}
         </div>
         <Link href={`/bots/${bot.id}/edit`} className={btnGhost}>
           Редактировать
@@ -109,10 +109,11 @@ export default async function BotDetailPage({
 
       <Card title={`Доставки вебхуков${logs.total > 0 ? ` (всего ${logs.total})` : ''}`}>
         {logs.total === 0 ? (
-          <p className="px-4 py-3 text-sm text-slate-500">Пока нет доставок.</p>
+          <p className="px-4 py-3 text-sm text-slate-400">Пока нет доставок.</p>
         ) : (
           <>
-            <table className="w-full">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px]">
               <thead className="bg-white/[0.03]">
                 <tr>
                   <th className={th}>Время</th>
@@ -141,13 +142,14 @@ export default async function BotDetailPage({
                     <td className={`${td} text-slate-400`}>{log.responseStatus ?? '—'}</td>
                     <td className={`${td} text-slate-400`}>{log.attempt}</td>
                     <td className={`${td} text-slate-400`}>{log.durationMs}</td>
-                    <td className={`${td} max-w-xs truncate text-slate-500`} title={log.errorMessage ?? ''}>
+                    <td className={`${td} max-w-xs truncate text-slate-400`} title={log.errorMessage ?? ''}>
                       {log.errorMessage ?? '—'}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
             <div className="px-4 pb-4">
               <Pagination page={logsPage} totalPages={logsTotalPages} hrefFor={(p) => `/bots/${id}?logsPage=${p}`} />
             </div>

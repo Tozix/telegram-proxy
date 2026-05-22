@@ -37,7 +37,7 @@ const tooltip = {
 function ChartCard({ title, className, children }: { title: string; className?: string; children: ReactNode }) {
   return (
     <section className={`rounded-2xl border border-white/10 bg-white/[0.02] p-5 ${className ?? ''}`}>
-      <h3 className="mb-4 text-sm font-semibold text-white">{title}</h3>
+      <h3 className="mb-4 text-sm font-semibold text-ink">{title}</h3>
       {children}
     </section>
   );
@@ -54,6 +54,9 @@ export function DashboardCharts({ data }: { data: Stats }) {
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       <ChartCard title="Доставки за 14 дней" className="lg:col-span-2">
+        <p className="sr-only">
+          Всего за период: {data.deliveries.total}, успешных {data.deliveries.success}, с ошибкой {data.deliveries.failed}.
+        </p>
         <ResponsiveContainer width="100%" height={260}>
           <AreaChart data={series} margin={{ left: -18, right: 8, top: 8 }}>
             <defs>
@@ -95,14 +98,20 @@ export function DashboardCharts({ data }: { data: Stats }) {
             </div>
           </>
         ) : (
-          <p className="py-16 text-center text-sm text-slate-500">Пока нет доставок</p>
+          <p className="py-16 text-center text-sm text-slate-400">Пока нет доставок</p>
         )}
       </ChartCard>
 
       <ChartCard title="Топ ботов по доставкам" className="lg:col-span-3">
         {data.topBots.length === 0 ? (
-          <p className="py-10 text-center text-sm text-slate-500">Пока нет ботов</p>
+          <p className="py-10 text-center text-sm text-slate-400">Пока нет ботов</p>
         ) : (
+          <>
+          <ul className="sr-only">
+            {data.topBots.map((b) => (
+              <li key={b.name}>{b.name}: {b.deliveries} доставок</li>
+            ))}
+          </ul>
           <ResponsiveContainer width="100%" height={Math.max(140, data.topBots.length * 46)}>
             <BarChart data={data.topBots} layout="vertical" margin={{ left: 24, right: 16 }}>
               <CartesianGrid stroke={GRID} horizontal={false} />
@@ -112,6 +121,7 @@ export function DashboardCharts({ data }: { data: Stats }) {
               <Bar dataKey="deliveries" name="Доставки" fill={ACCENT} radius={[0, 6, 6, 0]} barSize={18} />
             </BarChart>
           </ResponsiveContainer>
+          </>
         )}
       </ChartCard>
     </div>

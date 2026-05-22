@@ -1,7 +1,7 @@
 'use client';
 
 import { deleteBot, refreshWebhook } from '@/app/actions';
-import { btnGhost } from '@/lib/ui';
+import { btnGhost, focusRing } from '@/lib/ui';
 import { SubmitButton } from './SubmitButton';
 
 export function BotActions({ id }: { id: string }) {
@@ -23,7 +23,7 @@ export function BotActions({ id }: { id: string }) {
         <input type="hidden" name="id" value={id} />
         <SubmitButton
           pendingLabel="Удаление…"
-          className="inline-flex items-center justify-center rounded-lg border border-red-500/30 px-4 py-2 text-sm font-medium text-red-300 transition hover:bg-red-500/10 disabled:opacity-60"
+          className={`inline-flex min-h-11 items-center justify-center rounded-lg border border-red-500/30 px-4 py-2 text-sm font-medium text-red-300 transition hover:bg-red-500/10 disabled:opacity-60 ${focusRing}`}
         >
           Удалить
         </SubmitButton>

@@ -1,26 +1,27 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { CodeBlock } from '@/components/CodeBlock';
-import { PROXY_HOST, SWAGGER_URL } from '@/lib/site';
+import { SWAGGER_URL, getProxyHost } from '@/lib/site';
+import { focusRing } from '@/lib/ui';
 
 export const dynamic = 'force-dynamic';
 
 /* ── small building blocks ─────────────────────────────────────────────── */
 
-function DiffBlock() {
+function DiffBlock({ host }: { host: string }) {
   const lines = [
     { t: '  const bot = new Bot(token, {', k: ' ' as const },
     { t: '-   client: { apiRoot: "https://api.telegram.org" },', k: '-' as const },
-    { t: `+   client: { apiRoot: "${PROXY_HOST}" },`, k: '+' as const },
+    { t: `+   client: { apiRoot: "${host}" },`, k: '+' as const },
     { t: '  });', k: ' ' as const },
   ];
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0d1320] shadow-2xl shadow-black/40">
+    <div className="overflow-hidden rounded-xl border border-white/10 bg-surface shadow-2xl shadow-black/40">
       <div className="flex items-center gap-1.5 border-b border-white/5 px-4 py-2.5">
         <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
         <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
         <span className="h-2.5 w-2.5 rounded-full bg-green-400/70" />
-        <span className="ml-2 font-mono text-[11px] text-slate-500">одно изменение — и всё работает</span>
+        <span className="ml-2 font-mono text-[11px] text-slate-400">одно изменение — и всё работает</span>
       </div>
       <pre className="overflow-x-auto px-4 py-4 text-[13px] leading-[1.8]">
         <code className="font-mono">
@@ -60,9 +61,9 @@ function Node({ children, accent }: { children: ReactNode; accent?: boolean }) {
 
 function Arrow({ label }: { label: string }) {
   return (
-    <div className="flex shrink-0 flex-col items-center px-1 text-slate-500">
-      <span className="font-mono text-[10px] text-slate-500">{label}</span>
-      <span className="text-tg-400">→</span>
+    <div className="flex shrink-0 flex-col items-center px-1 py-1 text-slate-400 sm:py-0">
+      <span className="font-mono text-[10px] text-slate-400">{label}</span>
+      <span className="text-tg-400 rotate-90 sm:rotate-0" aria-hidden>→</span>
     </div>
   );
 }
@@ -70,8 +71,8 @@ function Arrow({ label }: { label: string }) {
 function Flow({ title, nodes }: { title: string; nodes: { label?: string; text: ReactNode; accent?: boolean }[] }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
-      <p className="mb-4 text-sm font-medium text-slate-400">{title}</p>
-      <div className="flex items-stretch gap-1">
+      <p className="mb-4 text-sm font-medium text-slate-300">{title}</p>
+      <div className="flex flex-col items-stretch gap-1 sm:flex-row">
         {nodes.map((n, i) => (
           <FlowItem key={i} first={i === 0} label={n.label} accent={n.accent}>
             {n.text}
@@ -94,7 +95,7 @@ function FlowItem({ first, label, accent, children }: { first: boolean; label?: 
 function Feature({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="group rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition hover:border-tg-500/30 hover:bg-white/[0.04]">
-      <h3 className="mb-1.5 font-semibold text-white">{title}</h3>
+      <h3 className="mb-1.5 font-semibold text-ink">{title}</h3>
       <p className="text-sm leading-relaxed text-slate-400">{children}</p>
     </div>
   );
@@ -102,7 +103,8 @@ function Feature({ title, children }: { title: string; children: ReactNode }) {
 
 /* ── page ──────────────────────────────────────────────────────────────── */
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const proxyHost = await getProxyHost();
   return (
     <>
       {/* Hero */}
@@ -113,11 +115,11 @@ export default function LandingPage() {
               <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
               self-hosted · open source
             </span>
-            <h1 className="mt-5 text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl">
+            <h1 className="mt-5 text-4xl font-bold leading-[1.1] tracking-tight text-ink sm:text-5xl">
               Telegram-боты там,
               <br />
               где Telegram{' '}
-              <span className="bg-gradient-to-r from-tg-400 to-tg-600 bg-clip-text text-transparent">заблокирован</span>
+              <span className="text-tg-400">заблокирован</span>
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-400">
               Прозрачный прокси для Bot API и вебхуков. Разверните на зарубежном сервере,
@@ -126,7 +128,7 @@ export default function LandingPage() {
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
                 href="/guide"
-                className="rounded-lg bg-tg-500 px-5 py-2.5 text-sm font-semibold text-[#06243a] transition hover:bg-tg-400"
+                className={`rounded-lg bg-tg-500 px-5 py-2.5 text-sm font-semibold text-[#06243a] transition hover:bg-tg-400 ${focusRing}`}
               >
                 Документация →
               </Link>
@@ -134,24 +136,24 @@ export default function LandingPage() {
                 href={SWAGGER_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-lg border border-white/15 px-5 py-2.5 text-sm font-medium text-slate-200 transition hover:border-white/30 hover:bg-white/5"
+                className={`rounded-lg border border-white/15 px-5 py-2.5 text-sm font-medium text-slate-200 transition hover:border-white/30 hover:bg-white/5 ${focusRing}`}
               >
                 Swagger API
               </a>
-              <Link href="/login" className="px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:text-white">
+              <Link href="/login" className={`rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:text-ink ${focusRing}`}>
                 Войти в админку
               </Link>
             </div>
           </div>
           <div className="animate-fade-up" style={{ animationDelay: '120ms' }}>
-            <DiffBlock />
+            <DiffBlock host={proxyHost} />
           </div>
         </div>
       </section>
 
       {/* How it works */}
       <section id="how" className="mx-auto max-w-6xl scroll-mt-20 px-5 py-16">
-        <h2 className="text-2xl font-bold tracking-tight text-white">Как это работает</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-ink">Как это работает</h2>
         <p className="mt-2 max-w-2xl text-slate-400">
           Две сквозные поверхности: приём вебхуков от Telegram и прозрачный исходящий Bot API.
         </p>
@@ -177,7 +179,7 @@ export default function LandingPage() {
 
       {/* Features */}
       <section id="features" className="mx-auto max-w-6xl scroll-mt-20 px-5 py-16">
-        <h2 className="text-2xl font-bold tracking-tight text-white">Возможности</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-ink">Возможности</h2>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Feature title="Прозрачный Bot API">
             Drop-in замена <span className="font-mono text-tg-300">api.telegram.org</span>: любой метод и
@@ -221,7 +223,7 @@ export default function LandingPage() {
       {/* CTA */}
       <section className="mx-auto max-w-6xl px-5 py-16">
         <div className="relative overflow-hidden rounded-3xl border border-tg-500/20 bg-gradient-to-br from-tg-600/15 via-white/[0.02] to-transparent p-10 text-center">
-          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Готовы подключить своего бота?</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Готовы подключить своего бота?</h2>
           <p className="mx-auto mt-3 max-w-xl text-slate-400">
             Поднимите прокси на своём сервере и следуйте пошаговому гайду с примерами на
             Python, TypeScript и JavaScript.
@@ -229,7 +231,7 @@ export default function LandingPage() {
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/guide"
-              className="rounded-lg bg-tg-500 px-5 py-2.5 text-sm font-semibold text-[#06243a] transition hover:bg-tg-400"
+              className={`rounded-lg bg-tg-500 px-5 py-2.5 text-sm font-semibold text-[#06243a] transition hover:bg-tg-400 ${focusRing}`}
             >
               Открыть документацию
             </Link>
@@ -237,7 +239,7 @@ export default function LandingPage() {
               href={SWAGGER_URL}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg border border-white/15 px-5 py-2.5 text-sm font-medium text-slate-200 transition hover:border-white/30 hover:bg-white/5"
+              className={`rounded-lg border border-white/15 px-5 py-2.5 text-sm font-medium text-slate-200 transition hover:border-white/30 hover:bg-white/5 ${focusRing}`}
             >
               Swagger API
             </a>

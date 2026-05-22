@@ -8,6 +8,7 @@ import { HealthController } from './health.controller';
 import { MailModule } from './mail/mail.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProxyModule } from './proxy/proxy.module';
+import { PublicConfigController } from './public-config.controller';
 import { RedisModule } from './redis/redis.module';
 import { StatsModule } from './stats/stats.module';
 import { TelegramModule } from './telegram/telegram.module';
@@ -31,6 +32,6 @@ import { UsersModule } from './users/users.module';
     ProxyModule,
     StatsModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, PublicConfigController],
 })
 export class AppModule {}

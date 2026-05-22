@@ -26,12 +26,12 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-500/15 text-2xl text-green-300">
               ✓
             </div>
-            <h1 className="text-lg font-semibold text-white">Email подтверждён</h1>
+            <h1 className="text-lg font-semibold text-ink">Email подтверждён</h1>
             <p className="mt-2 text-sm text-slate-400">Теперь можно войти в систему.</p>
           </>
         ) : (
           <>
-            <h1 className="text-lg font-semibold text-white">Не удалось подтвердить</h1>
+            <h1 className="text-lg font-semibold text-ink">Не удалось подтвердить</h1>
             <p className="mt-2 text-sm text-amber-300">{error}</p>
           </>
         )}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { focusRing } from '@/lib/ui';
 
 function CopyButton({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
@@ -15,10 +16,11 @@ function CopyButton({ code }: { code: string }) {
   }
   return (
     <button
+      type="button"
       onClick={copy}
-      className="rounded-md border border-white/10 px-2.5 py-1 font-mono text-[11px] text-slate-400 transition hover:border-tg-500/40 hover:text-tg-300"
+      className={`rounded-md border border-white/10 px-2.5 py-1.5 font-mono text-[11px] text-slate-300 transition hover:border-tg-500/40 hover:text-tg-300 ${focusRing}`}
     >
-      {copied ? '✓ скопировано' : 'копировать'}
+      <span aria-live="polite">{copied ? '✓ скопировано' : 'копировать'}</span>
     </button>
   );
 }
@@ -44,7 +46,7 @@ export function Code({ code }: { code: string }) {
 
 export function CodeBlock({ code, filename }: { code: string; filename?: string }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0d1320] shadow-xl shadow-black/20">
+    <div className="overflow-hidden rounded-xl border border-white/10 bg-surface shadow-xl shadow-black/20">
       <div className="flex items-center justify-between border-b border-white/5 px-4 py-2">
         <span className="font-mono text-[11px] text-slate-400">{filename}</span>
         <CopyButton code={code} />

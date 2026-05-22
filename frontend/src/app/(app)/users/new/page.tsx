@@ -5,11 +5,11 @@ import { cardPad } from '@/lib/ui';
 export default function NewUserPage() {
   return (
     <div className="mx-auto max-w-md">
-      <Link href="/users" className="text-sm text-slate-400 hover:text-white">
+      <Link href="/users" className="text-sm text-slate-400 hover:text-ink">
         ← К пользователям
       </Link>
       <div className={`mt-3 ${cardPad}`}>
-        <h1 className="mb-1 text-lg font-semibold text-white">Новый администратор</h1>
+        <h1 className="mb-1 text-lg font-semibold text-ink">Новый администратор</h1>
         <p className="mb-5 text-sm text-slate-400">Получит полный доступ к админке (создаётся подтверждённым).</p>
         <UserForm />
       </div>
