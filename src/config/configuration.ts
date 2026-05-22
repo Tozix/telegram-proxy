@@ -75,7 +75,7 @@ const toInt = (value: string | undefined, fallback: number): number => {
 
 export default (): AppConfig => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
-  port: toInt(process.env.PORT, 3000),
+  port: toInt(process.env.PORT, 3085),
   publicBaseUrl: (process.env.PUBLIC_BASE_URL ?? 'https://proxy.example.com').replace(/\/+$/, ''),
   appUrl: (process.env.APP_URL ?? process.env.PUBLIC_BASE_URL ?? 'http://localhost:3001').replace(/\/+$/, ''),
   database: {

@@ -23,7 +23,7 @@ The Prisma CLI is run via Bun too: `bun run db:push` (apply schema), `bun run pr
 Backend (repo root):
 ```bash
 bun install
-bun run start:dev        # hot-reload on :3000
+bun run start:dev        # hot-reload on :3085
 bun run start            # no watch
 bun run typecheck        # tsc --noEmit — the real verification gate
 ```
@@ -31,7 +31,7 @@ bun run typecheck        # tsc --noEmit — the real verification gate
 Frontend ([frontend/](frontend/)):
 ```bash
 cd frontend && bun install
-bun run dev              # :3001
+bun run dev              # :5085
 bun run typecheck
 ```
 

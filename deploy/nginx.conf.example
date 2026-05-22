@@ -7,10 +7,9 @@
 #    bot backend (RU)  ─▶ https://proxy.example.com/bot<token>/<method>  ─▶ backend
 #    operator (you)    ─▶ https://proxy.example.com/        (admin UI)   ─▶ frontend
 #
-#  The NestJS backend listens on 127.0.0.1:3000 and the Next.js admin UI on
-#  127.0.0.1:8080 — these are the host port mappings from docker-compose.yml
-#  (PORT and FRONTEND_PORT). If you run the apps directly with Bun, the
-#  frontend is on 127.0.0.1:3001 — adjust the upstream below.
+#  Defaults: backend on 127.0.0.1:3085, admin UI on 127.0.0.1:5085 — the host
+#  port mappings from docker-compose.yml (APP_HOST_PORT / FRONTEND_HOST_PORT).
+#  Change the upstreams below if you set different ports.
 #
 #  Install:
 #    sudo cp deploy/nginx.conf.example /etc/nginx/sites-available/telegram-proxy
@@ -20,8 +19,8 @@
 #    sudo certbot --nginx -d proxy.example.com
 # =============================================================================
 
-upstream tg_backend  { server 127.0.0.1:3000; keepalive 32; }
-upstream tg_frontend { server 127.0.0.1:8080; keepalive 32; }
+upstream tg_backend  { server 127.0.0.1:3085; keepalive 32; }
+upstream tg_frontend { server 127.0.0.1:5085; keepalive 32; }
 
 # --- HTTP: serve ACME challenge, redirect everything else to HTTPS ---
 server {

@@ -86,14 +86,14 @@ docker compose up -d --build
 
 | Сервис | URL | Назначение |
 |---|---|---|
-| `app` (backend) | `http://<host>:3000` | прокси + админ-API + Swagger `/docs` |
-| `frontend` | `http://<host>:8080` | веб-админка (порт = `FRONTEND_PORT`) |
+| `app` (backend) | `http://<host>:3085` | прокси + админ-API + Swagger `/docs` (порт = `APP_HOST_PORT`) |
+| `frontend` | `http://<host>:5085` | веб-интерфейс (порт = `FRONTEND_HOST_PORT`) |
 | `postgres` | — | БД (наружу не проброшена) |
 | `redis` | — | кэш гарда прокси (наружу не проброшен) |
 
 При первом запуске создаётся админ из `ADMIN_EMAIL`/`ADMIN_PASSWORD` (см.
 [Доступ в админку](#доступ-в-админку-и-сид-администратора)). Откройте
-**`http://<host>:8080`** и войдите этими данными.
+**`http://<host>:5085`** и войдите этими данными.
 
 Логи / остановка:
 ```bash
@@ -150,7 +150,7 @@ cp .env.example .env
 `.env.example` уже подходят для контейнеров/нативной установки выше):
 
 ```ini
-PUBLIC_BASE_URL=http://localhost:3000
+PUBLIC_BASE_URL=http://localhost:3085
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/telegram_proxy?schema=public
 REDIS_HOST=localhost
 REDIS_PORT=6379
@@ -166,14 +166,14 @@ bun run db:push
 
 Запуск:
 ```bash
-bun run start:dev      # hot-reload на http://localhost:3000
+bun run start:dev      # hot-reload на http://localhost:3085
 # или: bun run dev
 ```
 
 Проверка:
 ```bash
-curl http://localhost:3000/health           # {"status":"ok",...}
-open http://localhost:3000/docs             # Swagger UI
+curl http://localhost:3085/health           # {"status":"ok",...}
+open http://localhost:3085/docs             # Swagger UI
 ```
 
 ### 3. Frontend (в отдельном терминале)
@@ -181,11 +181,11 @@ open http://localhost:3000/docs             # Swagger UI
 ```bash
 cd frontend
 bun install
-cp .env.example .env        # API_URL=http://localhost:3000, COOKIE_SECURE=false
-bun run dev                 # http://localhost:3001
+cp .env.example .env        # API_URL=http://localhost:3085, COOKIE_SECURE=false
+bun run dev                 # http://localhost:5085
 ```
 
-Откройте **http://localhost:3001** и войдите данными `ADMIN_EMAIL`/`ADMIN_PASSWORD`.
+Откройте **http://localhost:5085** и войдите данными `ADMIN_EMAIL`/`ADMIN_PASSWORD`.
 
 ### 4. Проверка типов
 
@@ -221,7 +221,7 @@ Swagger — из `NEXT_PUBLIC_SWAGGER_URL` (см. [frontend/.env.example](fronte
 В логах при первом старте появится: `Seeded initial admin user: <email>`.
 
 **Как войти:**
-1. Откройте веб-админку (`http://localhost:3001` локально или `http://<host>:8080` /
+1. Откройте веб-админку (`http://localhost:5085` локально или `http://<host>:5085` /
    ваш домен в проде).
 2. Введите `ADMIN_EMAIL` и `ADMIN_PASSWORD`.
 3. После входа JWT кладётся в `httpOnly`-cookie `tp_token`; вы попадаете в `/bots`.
@@ -271,14 +271,15 @@ JWT_SECRET=<openssl rand -hex 32>
 ADMIN_EMAIL=<ваш-email>
 ADMIN_PASSWORD=<надёжный-пароль>
 COOKIE_SECURE=true                              # админка отдаётся по HTTPS
-FRONTEND_PORT=8080
+APP_HOST_PORT=3085                              # хост-порт backend (под nginx)
+FRONTEND_HOST_PORT=5085                         # хост-порт админки (под nginx)
 ```
 
 ```bash
 docker compose up -d --build
 ```
 
-Backend слушает `127.0.0.1:3000`, админка — `127.0.0.1:8080` (порты на хосте; наружу
+Backend слушает `127.0.0.1:3085`, админка — `127.0.0.1:5085` (порты на хосте; наружу
 их закрывает фаервол, публичный трафик идёт только через nginx).
 
 ### 2. nginx + TLS
@@ -325,7 +326,7 @@ docker compose up -d --build
 | `JWT_SECRET` | Секрет подписи JWT (≥16 символов). |
 | `JWT_EXPIRES_IN` | Срок жизни токена (`7d`, `12h`, …). |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Первый админ, создаётся при пустой таблице `users`. |
-| `APP_URL` | Публичный origin веб-интерфейса (для ссылок в письмах). За nginx = домен прокси; локально `http://localhost:3001`. |
+| `APP_URL` | Публичный origin веб-интерфейса (для ссылок в письмах). За nginx = домен прокси; локально `http://localhost:5085`. |
 | `MAIL_HOST` / `MAIL_PORT` / `MAIL_SSL` | SMTP-сервер для писем подтверждения. Пусто = письма не шлются, ссылка пишется в лог (dev). |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` | Учётные данные SMTP. |
 | `MAIL_FROM` / `MAIL_FROM_NAME` | Адрес и имя отправителя. |
@@ -335,7 +336,8 @@ docker compose up -d --build
 | `WEBHOOK_RETRY_ATTEMPTS` | Сколько раз повторно отправить вебхук, если бэкенд не вернул 2xx (по умолчанию 3). |
 | `WEBHOOK_RETRY_DELAY_MS` | Базовая пауза между повторами (мс), растёт экспоненциально (по умолчанию 500). |
 | `MAX_UPLOAD_MB` | Лимит размера тела запроса прокси (загрузка файлов). |
-| `FRONTEND_PORT` | Хост-порт веб-админки в docker-compose (по умолчанию `8080`). |
+| `PORT` / `FRONTEND_PORT` | Порты, которые слушают backend (`3085`) и фронтенд (`5085`). |
+| `APP_HOST_PORT` / `FRONTEND_HOST_PORT` | Хост-порты в docker-compose (по умолчанию совпадают с портами приложений). |
 | `COOKIE_SECURE` | `true` — только когда админка отдаётся по HTTPS (иначе cookie не сохранится по HTTP). |
 
 > Redis **не обязателен для запуска**: если он недоступен, гард прокси прозрачно

@@ -22,7 +22,7 @@ COPY src ./src
 COPY scripts ./scripts
 
 USER bun
-EXPOSE 3000
+EXPOSE 3085
 # Apply the schema (idempotent) before starting — keeps tables in sync, like the
 # old DB_SYNCHRONIZE. The client is already generated at build time (Prisma 7
 # `db push` no longer generates it).

@@ -15,7 +15,7 @@ FROM oven/bun:1.3 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3001
+ENV PORT=5085
 ENV HOSTNAME=0.0.0.0
 
 # Standalone bundle includes a minimal server.js + traced node_modules.
@@ -24,5 +24,5 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
 USER bun
-EXPOSE 3001
+EXPOSE 5085
 CMD ["bun", "server.js"]

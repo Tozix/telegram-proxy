@@ -41,14 +41,16 @@ services:
       DATABASE_URL: postgresql://${DB_USERNAME:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-telegram_proxy}?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      PORT: ${PORT:-3085}
     ports:
-      - '${PORT:-3000}:3000'
+      # ${host}:${container}. Both configurable; default to the same port.
+      - '${APP_HOST_PORT:-3085}:${PORT:-3085}'
     healthcheck:
       test:
         - CMD
         - bun
         - -e
-        - "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        - "fetch('http://localhost:${PORT:-3085}/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
       interval: 15s
       timeout: 5s
       retries: 5
@@ -62,13 +64,13 @@ services:
     environment:
       NODE_ENV: production
       # Reach the backend over the compose network (no CORS, server-to-server).
-      API_URL: http://app:3000
-      PORT: '3001'
+      API_URL: http://app:${PORT:-3085}
+      PORT: ${FRONTEND_PORT:-5085}
       HOSTNAME: 0.0.0.0
       # Set to "true" only when serving the admin over HTTPS.
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports:
-      - '${FRONTEND_PORT:-8080}:3001'
+      - '${FRONTEND_HOST_PORT:-5085}:${FRONTEND_PORT:-5085}'
 
 volumes:
   pgdata:
