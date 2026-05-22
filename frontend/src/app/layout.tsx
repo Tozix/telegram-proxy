@@ -14,8 +14,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const authed = Boolean(await getToken());
 
   return (
-    <html lang="ru">
-      <body className="min-h-full bg-slate-50 text-slate-900 antialiased">
+    // suppressHydrationWarning: браузерные расширения (LanguageTool/Grammarly)
+    // дописывают атрибуты в <html>/<body> до гидрации — это не наш рассинхрон.
+    <html lang="ru" suppressHydrationWarning>
+      <body className="min-h-full bg-slate-50 text-slate-900 antialiased" suppressHydrationWarning>
         {authed && (
           <header className="border-b border-slate-200 bg-white">
             <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
