@@ -1,0 +1,17 @@
+import { ApiProperty } from '@nestjs/swagger';
+
+/** Shape of NestJS error responses — used only for Swagger documentation. */
+export class ErrorResponseDto {
+  @ApiProperty({ example: 400 })
+  statusCode!: number;
+
+  @ApiProperty({
+    oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }],
+    example: ['token must be a valid Telegram bot token'],
+    description: 'Human-readable message, or an array of validation errors',
+  })
+  message!: string | string[];
+
+  @ApiProperty({ example: 'Bad Request' })
+  error!: string;
+}
