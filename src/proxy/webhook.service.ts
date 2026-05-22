@@ -1,9 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { BotsService } from '../bots/bots.service';
-import { DeliveryLog } from './delivery-log.entity';
+import { PrismaService } from '../prisma/prisma.service';
 
 export interface ForwardResult {
   status: number;
@@ -27,7 +25,7 @@ export class WebhookService {
   constructor(
     private readonly bots: BotsService,
     private readonly config: ConfigService,
-    @InjectRepository(DeliveryLog) private readonly logs: Repository<DeliveryLog>,
+    private readonly prisma: PrismaService,
   ) {
     this.forwardTimeoutMs = this.config.get<number>('proxy.webhookForwardTimeoutMs')!;
   }
@@ -93,15 +91,17 @@ export class WebhookService {
     durationMs: number,
   ): Promise<void> {
     try {
-      await this.logs.insert({
-        botId,
-        updateId,
-        targetUrl,
-        requestBytes,
-        responseStatus,
-        success,
-        errorMessage,
-        durationMs,
+      await this.prisma.deliveryLog.create({
+        data: {
+          botId,
+          updateId,
+          targetUrl,
+          requestBytes,
+          responseStatus,
+          success,
+          errorMessage,
+          durationMs,
+        },
       });
     } catch (err) {
       this.logger.error(`Failed to write delivery log: ${(err as Error).message}`);

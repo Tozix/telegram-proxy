@@ -8,14 +8,8 @@ export interface AppConfig {
   /** Public origin under which Telegram reaches this service, e.g. https://telegram.crossmark.ru */
   publicBaseUrl: string;
   database: {
-    host: string;
-    port: number;
-    username: string;
-    password: string;
-    name: string;
-    synchronize: boolean;
-    logging: boolean;
-    ssl: boolean;
+    /** Prisma connection string, e.g. postgresql://user:pass@host:5432/db?schema=public */
+    url: string;
   };
   jwt: {
     secret: string;
@@ -68,14 +62,9 @@ export default (): AppConfig => ({
   port: toInt(process.env.PORT, 3000),
   publicBaseUrl: (process.env.PUBLIC_BASE_URL ?? 'https://telegram.crossmark.ru').replace(/\/+$/, ''),
   database: {
-    host: process.env.DB_HOST ?? 'localhost',
-    port: toInt(process.env.DB_PORT, 5432),
-    username: process.env.DB_USERNAME ?? 'postgres',
-    password: process.env.DB_PASSWORD ?? 'postgres',
-    name: process.env.DB_NAME ?? 'telegram_proxy',
-    synchronize: toBool(process.env.DB_SYNCHRONIZE, true),
-    logging: toBool(process.env.DB_LOGGING, false),
-    ssl: toBool(process.env.DB_SSL, false),
+    url:
+      process.env.DATABASE_URL ??
+      'postgresql://postgres:postgres@localhost:5432/telegram_proxy?schema=public',
   },
   jwt: {
     secret: process.env.JWT_SECRET ?? 'change-me-in-production',

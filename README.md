@@ -23,7 +23,8 @@
 
 **Backend** ([`/`](.)):
 - **NestJS 11** + TypeScript, рантайм и пакетный менеджер — **Bun** (TS исполняется напрямую, без сборки)
-- **PostgreSQL** + TypeORM — хранение ботов, токенов, журнала доставок, админов
+- **PostgreSQL** + **Prisma 7** (драйвер-адаптер `@prisma/adapter-pg`, без Rust-движка) —
+  хранение ботов, токенов, журнала доставок, админов
 - **Redis** (ioredis) — кэш «is token registered?» для open-relay-гарда прокси
   (общий для нескольких инстансов, переживает рестарт; БД остаётся источником истины)
 - Авторизация админ-API — **JWT** (email + пароль)
@@ -109,8 +110,8 @@ sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
 sudo -u postgres psql -c "CREATE DATABASE telegram_proxy;"
 ```
 
-> Таблицы создавать вручную не нужно: при `DB_SYNCHRONIZE=true` TypeORM создаёт схему
-> из сущностей при старте. Нужна только сама БД (`telegram_proxy`).
+> Создавать таблицы вручную не нужно — их накатит `prisma db push` (шаг 2). Нужна
+> только сама БД (`telegram_proxy`).
 
 Проверка, что сервисы живы:
 ```bash
@@ -121,7 +122,7 @@ redis-cli -h localhost -p 6379 ping    # -> PONG
 ### 2. Backend
 
 ```bash
-bun install
+bun install            # ставит зависимости и генерирует Prisma Client (postinstall)
 cp .env.example .env
 ```
 
@@ -130,12 +131,7 @@ cp .env.example .env
 
 ```ini
 PUBLIC_BASE_URL=http://localhost:3000
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-DB_NAME=telegram_proxy
-DB_SYNCHRONIZE=true
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/telegram_proxy?schema=public
 REDIS_HOST=localhost
 REDIS_PORT=6379
 JWT_SECRET=local-dev-secret-change-me-0123456789   # ≥16 символов
@@ -143,9 +139,15 @@ ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=admin12345
 ```
 
+Накатите схему в БД (создаст таблицы; повторяйте после изменений `schema.prisma`):
+```bash
+bun run db:push
+```
+
 Запуск:
 ```bash
 bun run start:dev      # hot-reload на http://localhost:3000
+# или: bun run dev
 ```
 
 Проверка:
@@ -271,7 +273,8 @@ docker compose up -d --build
 | Переменная | Назначение |
 |---|---|
 | `PUBLIC_BASE_URL` | Публичный origin (например `https://telegram.crossmark.ru`). Из него строятся URL вебхуков. |
-| `DB_*` | Подключение к PostgreSQL. `DB_SYNCHRONIZE=true` авто-создаёт таблицы (для прода — миграции). |
+| `DATABASE_URL` | Строка подключения Prisma к PostgreSQL (`postgresql://user:pass@host:5432/db?schema=public`). Используется и приложением, и CLI (`prisma db push`). |
+| `DB_USERNAME` / `DB_PASSWORD` / `DB_NAME` | **Только для docker-compose**: настраивают встроенный контейнер Postgres и собирают `DATABASE_URL` внутри compose. |
 | `REDIS_URL` | Полный URL Redis (`redis://host:port/db`). Если задан — `REDIS_HOST/PORT/PASSWORD/DB` игнорируются. |
 | `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` / `REDIS_DB` | Подключение к Redis (если не задан `REDIS_URL`). |
 | `REDIS_KEY_PREFIX` | Префикс всех ключей сервиса в Redis (по умолчанию `tgproxy:`). |
@@ -372,5 +375,11 @@ https://telegram.crossmark.ru/file/bot<token>/<file_path>   # скачивани
 
 ## Прод-замечание про БД
 
-`DB_SYNCHRONIZE=true` удобно для старта, но в продакшене переключитесь на
-TypeORM-миграции, чтобы не терять/портить данные при изменении схемы.
+Схема накатывается через `prisma db push` (без файлов-миграций) — удобно для старта.
+В docker-образе `db push` выполняется при старте контейнера (идемпотентно). Для
+долгоживущей боевой БД имеет смысл перейти на версионируемые миграции
+(`prisma migrate`), чтобы безопасно эволюционировать схему без потери данных.
+
+> Prisma 7 использует драйвер-адаптер `@prisma/adapter-pg` (без Rust-движка), а
+> сгенерированный клиент лежит в `generated/` (git-ignored, создаётся `prisma generate`
+> на `postinstall`). Строка подключения для CLI берётся из [prisma.config.ts](prisma.config.ts).

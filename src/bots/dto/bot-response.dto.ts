@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import type { Bot } from '../../../generated/prisma/client';
 import { Expose, plainToInstance } from 'class-transformer';
-import { Bot } from '../bot.entity';
 
 /**
  * Public representation of a Bot. Built with class-transformer using the
@@ -74,11 +74,11 @@ export class BotResponseDto {
       id: bot.id,
       name: bot.name,
       username: bot.username,
-      telegramBotId: bot.telegramBotId,
+      telegramBotId: bot.telegramBotId == null ? null : Number(bot.telegramBotId),
       tokenPreview: maskToken(bot.token),
       webhookUrl: `${publicBaseUrl}/webhook/${bot.webhookSecret}`,
       targetWebhookUrl: bot.targetWebhookUrl,
-      allowedUpdates: bot.allowedUpdates,
+      allowedUpdates: (bot.allowedUpdates as string[] | null) ?? null,
       isActive: bot.isActive,
       lastWebhookSetAt: bot.lastWebhookSetAt,
       webhookError: bot.webhookError,

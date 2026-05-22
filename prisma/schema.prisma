@@ -1,0 +1,72 @@
+// Prisma schema for the Telegram proxy (Prisma 7).
+// Schema is applied with `prisma db push` (no migration files) — see README.
+// The connection URL lives in prisma.config.ts; the runtime uses the
+// @prisma/adapter-pg driver adapter (no Rust query engine).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  admin
+}
+
+/// Admin users of the management API / web UI.
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(admin)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+/// A registered Telegram bot whose webhook traffic this service proxies.
+model Bot {
+  id               String    @id @default(uuid()) @db.Uuid
+  name             String
+  /// Telegram bot token (`123456:ABC...`). Kept private — never serialized.
+  token            String    @unique
+  /// Numeric Telegram id of the bot (from getMe).
+  telegramBotId    BigInt?   @map("telegram_bot_id")
+  /// @-username of the bot (from getMe).
+  username         String?
+  /// Secret used both as the URL path segment and the Telegram secret_token header.
+  webhookSecret    String    @unique @map("webhook_secret")
+  /// Real backend URL that should receive forwarded updates.
+  targetWebhookUrl String    @map("target_webhook_url")
+  /// Optional Telegram allowed_updates list passed to setWebhook (jsonb; null = omit).
+  allowedUpdates   Json?     @map("allowed_updates")
+  isActive         Boolean   @default(true) @map("is_active")
+  lastWebhookSetAt DateTime? @map("last_webhook_set_at")
+  webhookError     String?   @map("webhook_error")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@map("bots")
+}
+
+/// Audit record of one incoming webhook delivery and its forwarding.
+model DeliveryLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  botId          String?  @map("bot_id") @db.Uuid
+  updateId       String?  @map("update_id")
+  targetUrl      String   @map("target_url")
+  requestBytes   Int      @default(0) @map("request_bytes")
+  responseStatus Int?     @map("response_status")
+  success        Boolean  @default(false)
+  errorMessage   String?  @map("error_message")
+  durationMs     Int      @default(0) @map("duration_ms")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([botId, createdAt])
+  @@map("delivery_logs")
+}

@@ -1,17 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { DeliveryLog } from './delivery-log.entity';
+import { PrismaService } from '../prisma/prisma.service';
 import { DeliveryLogResponseDto } from './dto/delivery-log-response.dto';
 
 @Injectable()
 export class DeliveryLogsService {
-  constructor(@InjectRepository(DeliveryLog) private readonly logs: Repository<DeliveryLog>) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async findByBot(botId: string, limit = 100): Promise<DeliveryLogResponseDto[]> {
-    const rows = await this.logs.find({
+    const rows = await this.prisma.deliveryLog.findMany({
       where: { botId },
-      order: { createdAt: 'DESC' },
+      orderBy: { createdAt: 'desc' },
       take: Math.min(Math.max(limit, 1), 500),
     });
     return rows.map((row) => DeliveryLogResponseDto.from(row));

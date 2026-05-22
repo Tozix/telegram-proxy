@@ -22,11 +22,7 @@ class EnvironmentVariables {
 
   @IsNotEmpty()
   @IsString()
-  DB_HOST!: string;
-
-  @IsNotEmpty()
-  @IsString()
-  DB_NAME!: string;
+  DATABASE_URL!: string;
 
   @IsNotEmpty()
   @IsString()

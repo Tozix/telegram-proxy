@@ -5,12 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Prisma } from '../../generated/prisma/client';
+import type { Bot } from '../../generated/prisma/client';
 import { randomBytes } from 'node:crypto';
-import { Repository } from 'typeorm';
+import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { TelegramService } from '../telegram/telegram.service';
-import { Bot } from './bot.entity';
 import { BotResponseDto } from './dto/bot-response.dto';
 import { CreateBotDto } from './dto/create-bot.dto';
 import { UpdateBotDto } from './dto/update-bot.dto';
@@ -23,7 +23,7 @@ export class BotsService {
   private readonly tokenCacheTtlSeconds: number;
 
   constructor(
-    @InjectRepository(Bot) private readonly bots: Repository<Bot>,
+    private readonly prisma: PrismaService,
     private readonly telegram: TelegramService,
     private readonly redis: RedisService,
     config: ConfigService,
@@ -35,7 +35,7 @@ export class BotsService {
   // ----- public API (returns DTOs) -----
 
   async create(dto: CreateBotDto): Promise<BotResponseDto> {
-    const existing = await this.bots.findOne({ where: { token: dto.token } });
+    const existing = await this.prisma.bot.findUnique({ where: { token: dto.token } });
     if (existing) {
       throw new ConflictException('A bot with this token is already registered');
     }
@@ -43,25 +43,26 @@ export class BotsService {
     // Validate the token and capture the bot identity.
     const me = await this.telegram.getMe(dto.token);
 
-    const bot = this.bots.create({
-      name: dto.name,
-      token: dto.token,
-      telegramBotId: me.id,
-      username: me.username ?? null,
-      webhookSecret: this.generateSecret(),
-      targetWebhookUrl: dto.targetWebhookUrl,
-      allowedUpdates: dto.allowedUpdates ?? null,
-      isActive: true,
+    let bot = await this.prisma.bot.create({
+      data: {
+        name: dto.name,
+        token: dto.token,
+        telegramBotId: me.id != null ? BigInt(me.id) : null,
+        username: me.username ?? null,
+        webhookSecret: this.generateSecret(),
+        targetWebhookUrl: dto.targetWebhookUrl,
+        allowedUpdates: dto.allowedUpdates ?? Prisma.DbNull,
+        isActive: true,
+      },
     });
-    await this.bots.save(bot);
     await this.invalidateTokenCache();
 
-    await this.registerWebhook(bot, dto.dropPendingUpdates ?? false);
+    bot = await this.registerWebhook(bot, dto.dropPendingUpdates ?? false);
     return this.toDto(bot);
   }
 
   async findAll(): Promise<BotResponseDto[]> {
-    const bots = await this.bots.find({ order: { createdAt: 'DESC' } });
+    const bots = await this.prisma.bot.findMany({ orderBy: { createdAt: 'desc' } });
     return bots.map((b) => this.toDto(b));
   }
 
@@ -77,44 +78,45 @@ export class BotsService {
       (dto.targetWebhookUrl !== undefined && dto.targetWebhookUrl !== bot.targetWebhookUrl) ||
       dto.allowedUpdates !== undefined;
 
+    const data: Prisma.BotUpdateInput = {};
+
     if (dto.token !== undefined && dto.token !== bot.token) {
-      const clash = await this.bots.findOne({ where: { token: dto.token } });
+      const clash = await this.prisma.bot.findUnique({ where: { token: dto.token } });
       if (clash && clash.id !== bot.id) {
         throw new ConflictException('A bot with this token is already registered');
       }
       const me = await this.telegram.getMe(dto.token);
-      bot.token = dto.token;
-      bot.telegramBotId = me.id;
-      bot.username = me.username ?? null;
+      data.token = dto.token;
+      data.telegramBotId = me.id != null ? BigInt(me.id) : null;
+      data.username = me.username ?? null;
     }
 
-    if (dto.name !== undefined) bot.name = dto.name;
-    if (dto.targetWebhookUrl !== undefined) bot.targetWebhookUrl = dto.targetWebhookUrl;
-    if (dto.allowedUpdates !== undefined) bot.allowedUpdates = dto.allowedUpdates;
-    if (dto.isActive !== undefined) bot.isActive = dto.isActive;
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.targetWebhookUrl !== undefined) data.targetWebhookUrl = dto.targetWebhookUrl;
+    if (dto.allowedUpdates !== undefined) data.allowedUpdates = dto.allowedUpdates ?? Prisma.DbNull;
+    if (dto.isActive !== undefined) data.isActive = dto.isActive;
 
-    await this.bots.save(bot);
+    let updated = await this.prisma.bot.update({ where: { id }, data });
     await this.invalidateTokenCache();
 
     if (dto.isActive === false) {
-      await this.safeDeleteWebhook(bot);
+      await this.safeDeleteWebhook(updated);
     } else if (webhookAffecting || dto.isActive === true) {
-      await this.registerWebhook(bot, false);
+      updated = await this.registerWebhook(updated, false);
     }
 
-    return this.toDto(bot);
+    return this.toDto(updated);
   }
 
   async remove(id: string, dropPendingUpdates = false): Promise<void> {
     const bot = await this.getEntity(id);
     await this.safeDeleteWebhook(bot, dropPendingUpdates);
-    await this.bots.remove(bot);
+    await this.prisma.bot.delete({ where: { id } });
     await this.invalidateTokenCache();
   }
 
   async refreshWebhook(id: string, dropPendingUpdates = false): Promise<BotResponseDto> {
-    const bot = await this.getEntity(id);
-    await this.registerWebhook(bot, dropPendingUpdates);
+    const bot = await this.registerWebhook(await this.getEntity(id), dropPendingUpdates);
     return this.toDto(bot);
   }
 
@@ -126,13 +128,13 @@ export class BotsService {
   // ----- internal API (returns entities) -----
 
   async getEntity(id: string): Promise<Bot> {
-    const bot = await this.bots.findOne({ where: { id } });
+    const bot = await this.prisma.bot.findUnique({ where: { id } });
     if (!bot) throw new NotFoundException('Bot not found');
     return bot;
   }
 
   findByWebhookSecret(secret: string): Promise<Bot | null> {
-    return this.bots.findOne({ where: { webhookSecret: secret } });
+    return this.prisma.bot.findUnique({ where: { webhookSecret: secret } });
   }
 
   /**
@@ -146,7 +148,7 @@ export class BotsService {
     const cached = await this.redis.get(cacheKey);
     if (cached !== null) return cached === '1';
 
-    const exists = (await this.bots.count({ where: { token } })) > 0;
+    const exists = (await this.prisma.bot.count({ where: { token } })) > 0;
     await this.redis.set(cacheKey, exists ? '1' : '0', this.tokenCacheTtlSeconds);
     return exists;
   }
@@ -157,24 +159,34 @@ export class BotsService {
     return BotResponseDto.from(bot, this.publicBaseUrl);
   }
 
+  /** The `allowed_updates` jsonb column, narrowed back to its app-level shape. */
+  private allowed(bot: Bot): string[] | null {
+    return (bot.allowedUpdates as string[] | null) ?? null;
+  }
+
   /** Registers our public webhook URL with Telegram and records the outcome. */
-  private async registerWebhook(bot: Bot, dropPendingUpdates: boolean): Promise<void> {
+  private async registerWebhook(bot: Bot, dropPendingUpdates: boolean): Promise<Bot> {
     const url = `${this.publicBaseUrl}/webhook/${bot.webhookSecret}`;
+    let lastWebhookSetAt = bot.lastWebhookSetAt;
+    let webhookError = bot.webhookError;
     try {
       await this.telegram.setWebhook(bot.token, {
         url,
         secretToken: bot.webhookSecret,
-        allowedUpdates: bot.allowedUpdates,
+        allowedUpdates: this.allowed(bot),
         dropPendingUpdates,
       });
-      bot.lastWebhookSetAt = new Date();
-      bot.webhookError = null;
+      lastWebhookSetAt = new Date();
+      webhookError = null;
       this.logger.log(`Webhook set for bot ${bot.id} (${bot.username ?? bot.name}) -> ${url}`);
     } catch (err) {
-      bot.webhookError = (err as Error).message;
-      this.logger.warn(`Failed to set webhook for bot ${bot.id}: ${bot.webhookError}`);
+      webhookError = (err as Error).message;
+      this.logger.warn(`Failed to set webhook for bot ${bot.id}: ${webhookError}`);
     }
-    await this.bots.save(bot);
+    return this.prisma.bot.update({
+      where: { id: bot.id },
+      data: { lastWebhookSetAt, webhookError },
+    });
   }
 
   private async safeDeleteWebhook(bot: Bot, dropPendingUpdates = false): Promise<void> {

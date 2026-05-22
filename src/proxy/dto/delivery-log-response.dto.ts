@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import type { DeliveryLog } from '../../../generated/prisma/client';
 import { Expose, plainToInstance } from 'class-transformer';
-import { DeliveryLog } from '../delivery-log.entity';
 
 /** One webhook delivery attempt from Telegram → proxy → real backend. */
 export class DeliveryLogResponseDto {

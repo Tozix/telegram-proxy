@@ -16,6 +16,8 @@ The README ([README.md](README.md)) is the authoritative spec (in Russian); this
 
 Use **Bun** for everything — backend and frontend, install and run. Never npm/yarn/pnpm. Bun executes TypeScript directly (no build step at runtime). Type-only imports **must** use `import type` or Bun throws at runtime.
 
+The Prisma CLI is run via Bun too: `bun run db:push` (apply schema), `bun run prisma:generate` (regenerate the client; also runs on `postinstall`).
+
 ## Commands
 
 Backend (repo root):
@@ -47,7 +49,15 @@ Notes:
 
 ## Backend architecture
 
-NestJS 11 + TypeORM (PostgreSQL) + Redis (ioredis). Modules: `redis`, `users`, `auth`, `telegram`, `bots`, `proxy` ([src/app.module.ts](src/app.module.ts)).
+NestJS 11 + Prisma 7 (PostgreSQL) + Redis (ioredis). Modules: `prisma`, `redis`, `users`, `auth`, `telegram`, `bots`, `proxy` ([src/app.module.ts](src/app.module.ts)).
+
+### Data layer: Prisma 7 (critical)
+
+- Schema: [prisma/schema.prisma](prisma/schema.prisma). Models `User`, `Bot`, `DeliveryLog` (+ `UserRole` enum). `@@map`/`@map` keep the original snake_case table/column names.
+- **Prisma 7 specifics**: the `prisma-client` generator emits the client to **`generated/prisma/`** (gitignored; import from `../../generated/prisma/client`, NOT `@prisma/client`). The datasource URL lives in [prisma.config.ts](prisma.config.ts) (`env('DATABASE_URL')`), not in the schema. The runtime connects through the **`@prisma/adapter-pg` driver adapter** ([PrismaService](src/prisma/prisma.service.ts)) — there is no Rust query engine, which suits Bun.
+- **Schema sync**: `prisma db push` (no migration files — chosen for simplicity). Docker runs it on container start; locally run `bun run db:push` after editing the schema. After any schema change, the client must be regenerated (`db push` and `prisma generate` both do this).
+- Global [PrismaModule](src/prisma/prisma.module.ts) exposes `PrismaService` (extends `PrismaClient`); inject it and use `prisma.user` / `prisma.bot` / `prisma.deliveryLog`.
+- `allowed_updates` is a `Json?` column → read as `Prisma.JsonValue`; write `null` as `Prisma.DbNull`. `telegramBotId` is `BigInt?` → convert with `BigInt(...)` on write and `Number(...)` for the DTO.
 
 ### The proxy bypasses NestJS (critical)
 
@@ -85,4 +95,4 @@ Next.js 15 App Router + Tailwind v4, `output: 'standalone'`. The browser **never
 
 ## Production note
 
-`DB_SYNCHRONIZE=true` auto-creates tables and is convenient for getting started, but switch to TypeORM migrations for production to avoid schema-change data loss.
+Schema changes are applied with `prisma db push` (no migration history). It is convenient but cannot do safe, reviewable schema evolution — for a long-lived production DB, consider switching to `prisma migrate` (versioned migrations) to avoid data loss on schema changes.
