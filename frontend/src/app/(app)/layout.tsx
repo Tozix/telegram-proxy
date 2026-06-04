@@ -35,6 +35,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const links = [
     ...(isAdmin ? [{ href: '/dashboard', label: 'Дашборд' }] : []),
     { href: '/bots', label: 'Боты' },
+    { href: '/tokens', label: 'API-токены' },
     ...(isAdmin ? [{ href: '/users', label: 'Пользователи' }] : []),
     { href: '/guide', label: 'Документация' },
   ];

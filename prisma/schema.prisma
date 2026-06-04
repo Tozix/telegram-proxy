@@ -33,9 +33,32 @@ model User {
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  bots Bot[]
+  bots      Bot[]
+  apiTokens ApiToken[]
 
   @@map("users")
+}
+
+/// A long-lived ("static") personal access token. It is a JWT signed with the
+/// same secret as login tokens (carrying the owner's role), but with a ~999y
+/// expiry and a `jti` claim equal to this row's id. The token value itself is
+/// shown once at creation and never stored; deleting this row revokes it — the
+/// auth layer rejects any JWT whose `jti` has no matching row.
+model ApiToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  /// Owner. The token grants exactly this user's role/permissions. Cascade on delete.
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Human-friendly label so the owner can tell tokens apart (e.g. "CI", "deploy").
+  name       String
+  /// Last time a request authenticated with this token (null = never used yet).
+  lastUsedAt DateTime? @map("last_used_at")
+  /// Mirrors the JWT `exp` claim, for display.
+  expiresAt  DateTime  @map("expires_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("api_tokens")
 }
 
 /// A registered Telegram bot whose webhook traffic this service proxies.

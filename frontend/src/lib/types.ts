@@ -62,6 +62,19 @@ export interface Stats {
   topBots: { id: string; name: string; deliveries: number }[];
 }
 
+export interface ApiToken {
+  id: string;
+  name: string;
+  lastUsedAt: string | null;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface CreatedApiToken extends ApiToken {
+  /** Returned once at creation; never available again. */
+  token: string;
+}
+
 export interface LoginResponse {
   accessToken: string;
   tokenType: string;

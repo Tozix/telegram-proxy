@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 import { clearToken, setToken } from '@/lib/session';
-import type { Bot, LoginResponse } from '@/lib/types';
+import type { Bot, CreatedApiToken, LoginResponse } from '@/lib/types';
 
 export type FormState = { error?: string };
 
@@ -157,4 +157,28 @@ export async function deleteAdmin(formData: FormData): Promise<void> {
   await api.del(`/api/users/${id}`);
   revalidatePath('/users');
   redirect('/users');
+}
+
+// ----- статические API-токены -----
+
+export type CreateTokenState = { error?: string; token?: string; name?: string };
+
+export async function createApiToken(_prev: CreateTokenState, formData: FormData): Promise<CreateTokenState> {
+  const name = String(formData.get('name') ?? '').trim();
+  if (!name) return { error: 'Введите название токена' };
+
+  let created: CreatedApiToken;
+  try {
+    created = await api.post<CreatedApiToken>('/api/tokens', { name });
+  } catch (e) {
+    return { error: message(e, 'Не удалось создать токен') };
+  }
+  revalidatePath('/tokens');
+  return { token: created.token, name: created.name };
+}
+
+export async function revokeApiToken(formData: FormData): Promise<void> {
+  const id = String(formData.get('id') ?? '');
+  await api.del(`/api/tokens/${id}`);
+  revalidatePath('/tokens');
 }

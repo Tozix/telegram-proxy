@@ -202,6 +202,7 @@ ESLint/Prettier в проекте не настроены, их скрипты �
 | `/guide` | публично | Документация с примерами на Python / TypeScript / JavaScript |
 | `/register`, `/login`, `/verify` | публично | Регистрация, вход, подтверждение email |
 | `/bots` | по JWT | Свои боты (у пользователя — только свои) |
+| `/tokens` | по JWT | Статические API-токены: создать, посмотреть, отозвать |
 | `/dashboard`, `/users` | по JWT (админ) | Дашборд со статистикой и управление пользователями |
 
 Домен прокси в примерах документации берётся из `NEXT_PUBLIC_PROXY_HOST`, ссылка на
@@ -390,11 +391,34 @@ docker compose up -d --build
 | `POST` | `/api/bots/:id/refresh-webhook` | Переустановить вебхук |
 | `GET` | `/api/bots/:id/webhook-info` | Живой `getWebhookInfo` из Telegram |
 | `GET` | `/api/bots/:id/logs` | Журнал доставок вебхуков (limit/offset) |
+| `GET` | `/api/tokens` | Список своих статических токенов |
+| `POST` | `/api/tokens` | Создать статический токен (значение видно один раз) |
+| `DELETE` | `/api/tokens/:id` | Отозвать токен |
 | `GET` | `/health` | Liveness-проба |
 
 Списочные методы (`/api/bots`, `/api/bots/:id/logs`) принимают `?limit=20&offset=0`
 (limit 1–100, offset ≥ 0). Ответ: `{ "total", "limit", "offset", "items": [...] }`,
 где `total` — общее число записей.
+
+### Статические токены (доступ к API без логина/пароля)
+
+Чтобы управлять ботами из скриптов/CI без email и пароля, выпустите **статический
+токен** — на странице **«API-токены»** в веб-интерфейсе или через API. Это обычный
+bearer-токен с **вашими правами** (роль сохраняется), отличается только сроком
+действия (≈999 лет). Значение возвращается **один раз** при создании — сохраните его
+сразу; в БД хранятся лишь метаданные. Удаление токена немедленно его аннулирует.
+
+```bash
+# выпустить токен (нужен обычный JWT из /auth/login)
+curl -X POST https://proxy.example.com/api/tokens \
+  -H "authorization: Bearer $JWT" \
+  -H 'content-type: application/json' \
+  -d '{"name":"CI deploy"}'
+# Ответ: { "id": "...", "name": "CI deploy", "token": "eyJ...", "expiresAt": "3025-...", "createdAt": "..." }
+
+# дальше используйте token как обычный bearer для любых /api/*
+curl https://proxy.example.com/api/bots -H "authorization: Bearer $STATIC_TOKEN"
+```
 
 ## Как работает проксирование
 
